@@ -7,11 +7,20 @@ Backend server cho dự án IoT sử dụng Node.js, Express và MongoDB.
 ```
 backend/
 ├── config/
-│   └── database.js      # Cấu hình kết nối MongoDB
+│   ├── database.js      # Cấu hình kết nối MongoDB
+│   └── cors.js          # Cấu hình CORS
+├── middleware/
+│   ├── auth.js          # Middleware xác thực JWT
+│   └── errorHandler.js  # Middleware xử lý lỗi
+├── routes/
+│   ├── index.js         # Tập trung tất cả routes
+│   ├── auth.js          # Routes xác thực (login, register)
+│   └── protected.js     # Routes có bảo vệ (devices)
 ├── .env                 # Biến môi trường (không commit)
 ├── .env.example         # Mẫu biến môi trường
 ├── .gitignore          # File ignore cho Git
-├── index.js            # File khởi động server
+├── app.js              # Cấu hình Express app
+├── server.js           # Entry point - Khởi động server
 └── package.json        # Quản lý dependencies
 ```
 

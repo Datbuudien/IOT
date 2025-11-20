@@ -68,3 +68,22 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+📋 ROADMAP ĐỀ XUẤT:
+Phase 1 - Core Features (Bắt buộc)
+✅ Login/Register
+✅ Dashboard/Home
+🔨 Quản lý thiết bị
+🔨 Real-time monitoring
+Phase 2 - Automation (Quan trọng)
+🔨 Lịch tưới tự động
+🔨 Rule-based automation
+🔨 Notifications
+Phase 3 - Analytics (Nâng cao)
+🔨 Lịch sử & thống kê
+🔨 Reports & charts
+🔨 Weather integration
+Phase 4 - Admin & Scale (Mở rộng)
+🔨 Admin panel
+🔨 Multi-user support
+🔨 Zones management

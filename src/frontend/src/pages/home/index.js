@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import authService from '../../services/authService';
+import deviceService from '../../services/deviceService';
+import MainLayout from '../../layout/MainLayout';
 
 const Home = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
   const [systemData, setSystemData] = useState({
     temperature: 28,
     humidity: 65,
@@ -18,8 +22,35 @@ const Home = () => {
     { id: 3, message: 'Bơm nước đã dừng hoạt động', time: '1 giờ trước', type: 'success' }
   ]);
 
+  // Kiểm tra authentication khi component mount
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      navigate('/login');
+      return;
+    }
+
+    // Lấy thông tin user
+    const userData = authService.getUser();
+    setUser(userData);
+
+    // Load dữ liệu từ API
+    loadDevices();
+  }, [navigate]);
+
+  const loadDevices = async () => {
+    try {
+      const response = await deviceService.getDevices();
+      if (response.success) {
+        console.log('Devices:', response.data);
+        // TODO: Xử lý dữ liệu devices nếu cần
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải devices:', error);
+    }
+  };
+
   const handleLogout = () => {
-    // TODO: Clear user session/token
+    authService.logout();
     navigate('/login');
   };
 
@@ -46,40 +77,8 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 bg-green-500 rounded-full flex items-center justify-center">
-                <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Hệ Thống Tưới Tiêu Thông Minh</h1>
-                <p className="text-sm text-gray-500">Giám sát và điều khiển</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">Xin chào, Admin</p>
-                <p className="text-xs text-gray-500">admin@example.com</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition duration-150 text-sm font-medium shadow-md"
-              >
-                Đăng xuất
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Control Panel */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
@@ -224,7 +223,7 @@ const Home = () => {
             ))}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 };
