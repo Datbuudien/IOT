@@ -1,15 +1,10 @@
-const { ObjectId } = require('mongodb');
-const { getDB } = require('../config/database');
+const Device = require('../models/Device');
+const { validateDevice } = require('../schemas/deviceSchema');
 
 // Lấy tất cả devices của user
 const getAllDevices = async (req, res) => {
   try {
-    const db = getDB();
-    const devicesCollection = db.collection('devices');
-
-    const devices = await devicesCollection
-      .find({ userId: req.userId })
-      .toArray();
+    const devices = await Device.findByUserId(req.userId);
 
     res.json({
       success: true,
@@ -27,13 +22,7 @@ const getAllDevices = async (req, res) => {
 // Lấy một device theo ID
 const getDeviceById = async (req, res) => {
   try {
-    const db = getDB();
-    const devicesCollection = db.collection('devices');
-
-    const device = await devicesCollection.findOne({
-      _id: new ObjectId(req.params.id),
-      userId: req.userId
-    });
+    const device = await Device.findById(req.params.id, req.userId);
 
     if (!device) {
       return res.status(404).json({
@@ -58,36 +47,40 @@ const getDeviceById = async (req, res) => {
 // Thêm device mới
 const createDevice = async (req, res) => {
   try {
-    const { name, type, status } = req.body;
+    const { deviceId, pumpStatus, mode } = req.body;
 
-    if (!name || !type) {
+    // Validate dữ liệu
+    const validation = validateDevice({ deviceId, pumpStatus, mode });
+    if (!validation.isValid) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng điền đầy đủ thông tin'
+        message: 'Dữ liệu không hợp lệ',
+        errors: validation.errors
       });
     }
 
-    const db = getDB();
-    const devicesCollection = db.collection('devices');
+    // Kiểm tra deviceId đã tồn tại chưa
+    const existingDevice = await Device.findByDeviceId(deviceId);
+    if (existingDevice) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã thiết bị đã tồn tại'
+      });
+    }
 
-    const newDevice = {
+    const deviceData = {
       userId: req.userId,
-      name,
-      type,
-      status: status || 'offline',
-      createdAt: new Date(),
-      updatedAt: new Date()
+      deviceId,
+      pumpStatus: pumpStatus !== undefined ? pumpStatus : false,
+      mode: mode || 'manual'
     };
 
-    const result = await devicesCollection.insertOne(newDevice);
+    const newDevice = await Device.create(deviceData);
 
     res.status(201).json({
       success: true,
       message: 'Thêm device thành công',
-      data: {
-        _id: result.insertedId,
-        ...newDevice
-      }
+      data: newDevice
     });
   } catch (error) {
     console.error('Lỗi thêm device:', error);
@@ -101,24 +94,24 @@ const createDevice = async (req, res) => {
 // Cập nhật device
 const updateDevice = async (req, res) => {
   try {
-    const { name, type, status } = req.body;
-    const db = getDB();
-    const devicesCollection = db.collection('devices');
+    const { deviceId, pumpStatus, mode } = req.body;
+    
+    // Validate dữ liệu (chỉ validate các field được gửi lên)
+    const updateData = {};
+    if (deviceId !== undefined) updateData.deviceId = deviceId;
+    if (pumpStatus !== undefined) updateData.pumpStatus = pumpStatus;
+    if (mode !== undefined) updateData.mode = mode;
 
-    const result = await devicesCollection.updateOne(
-      {
-        _id: new ObjectId(req.params.id),
-        userId: req.userId
-      },
-      {
-        $set: {
-          name,
-          type,
-          status,
-          updatedAt: new Date()
-        }
-      }
-    );
+    const validation = validateDevice(updateData);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dữ liệu không hợp lệ',
+        errors: validation.errors
+      });
+    }
+
+    const result = await Device.update(req.params.id, req.userId, updateData);
 
     if (result.matchedCount === 0) {
       return res.status(404).json({
@@ -143,13 +136,7 @@ const updateDevice = async (req, res) => {
 // Xóa device
 const deleteDevice = async (req, res) => {
   try {
-    const db = getDB();
-    const devicesCollection = db.collection('devices');
-
-    const result = await devicesCollection.deleteOne({
-      _id: new ObjectId(req.params.id),
-      userId: req.userId
-    });
+    const result = await Device.delete(req.params.id, req.userId);
 
     if (result.deletedCount === 0) {
       return res.status(404).json({

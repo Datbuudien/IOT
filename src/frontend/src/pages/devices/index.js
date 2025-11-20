@@ -11,9 +11,9 @@ const Devices = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    type: 'sensor',
-    status: 'offline'
+    deviceId: '',
+    pumpStatus: false,
+    mode: 'manual'
   });
 
   useEffect(() => {
@@ -49,9 +49,9 @@ const Devices = () => {
   const handleAddDevice = () => {
     setEditingDevice(null);
     setFormData({
-      name: '',
-      type: 'sensor',
-      status: 'offline'
+      deviceId: '',
+      pumpStatus: false,
+      mode: 'manual'
     });
     setShowModal(true);
   };
@@ -59,9 +59,9 @@ const Devices = () => {
   const handleEditDevice = (device) => {
     setEditingDevice(device);
     setFormData({
-      name: device.name,
-      type: device.type,
-      status: device.status
+      deviceId: device.deviceId,
+      pumpStatus: device.pumpStatus,
+      mode: device.mode
     });
     setShowModal(true);
   };
@@ -70,8 +70,8 @@ const Devices = () => {
     e.preventDefault();
     setError('');
 
-    if (!formData.name || !formData.type) {
-      setError('Vui lòng điền đầy đủ thông tin');
+    if (!formData.deviceId) {
+      setError('Vui lòng điền mã thiết bị');
       return;
     }
 
@@ -90,6 +90,17 @@ const Devices = () => {
     }
   };
 
+  const handleTogglePump = async (device) => {
+    try {
+      await deviceService.updateDevice(device._id, {
+        pumpStatus: !device.pumpStatus
+      });
+      loadDevices();
+    } catch (error) {
+      setError('Không thể thay đổi trạng thái bơm');
+    }
+  };
+
   const handleDeleteDevice = async (deviceId) => {
     if (!window.confirm('Bạn có chắc muốn xóa thiết bị này?')) {
       return;
@@ -103,48 +114,33 @@ const Devices = () => {
     }
   };
 
-  const getDeviceIcon = (type) => {
-    switch (type) {
-      case 'sensor':
-        return (
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-          </svg>
-        );
-      case 'pump':
-        return (
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        );
-      case 'valve':
-        return (
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-          </svg>
-        );
-      default:
-        return (
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-          </svg>
-        );
-    }
+  const getDeviceIcon = (pumpStatus) => {
+    return (
+      <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    );
   };
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      online: { bg: 'bg-green-100', text: 'text-green-800', label: 'Hoạt động' },
-      offline: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Ngoại tuyến' },
-      error: { bg: 'bg-red-100', text: 'text-red-800', label: 'Lỗi' },
-      maintenance: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Bảo trì' }
+  const getModeLabel = (mode) => {
+    const modeConfig = {
+      auto: { label: 'Tự động', color: 'text-blue-600' },
+      manual: { label: 'Thủ công', color: 'text-gray-600' },
+      schedule: { label: 'Lịch trình', color: 'text-purple-600' },
+      off: { label: 'Tắt', color: 'text-red-600' }
     };
+    return modeConfig[mode] || modeConfig.manual;
+  };
 
-    const config = statusConfig[status] || statusConfig.offline;
-    
-    return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
-        {config.label}
+  const getPumpStatusBadge = (pumpStatus) => {
+    return pumpStatus ? (
+      <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1">
+        <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
+        Đang hoạt động
+      </span>
+    ) : (
+      <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+        Tắt
       </span>
     );
   };
@@ -215,21 +211,33 @@ const Devices = () => {
               <div key={device._id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition duration-150 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className={`p-3 rounded-lg ${
-                    device.status === 'online' ? 'bg-green-100 text-green-600' :
-                    device.status === 'error' ? 'bg-red-100 text-red-600' :
-                    'bg-gray-100 text-gray-600'
+                    device.pumpStatus ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
                   }`}>
-                    {getDeviceIcon(device.type)}
+                    {getDeviceIcon(device.pumpStatus)}
                   </div>
-                  {getStatusBadge(device.status)}
+                  {getPumpStatusBadge(device.pumpStatus)}
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{device.name}</h3>
-                <p className="text-sm text-gray-500 capitalize mb-4">
-                  Loại: {device.type === 'sensor' ? 'Cảm biến' : device.type === 'pump' ? 'Bơm nước' : 'Van nước'}
-                </p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {device.deviceId}
+                </h3>
+                <div className="space-y-2 mb-4">
+                  <p className={`text-sm font-medium ${getModeLabel(device.mode).color}`}>
+                    Chế độ: {getModeLabel(device.mode).label}
+                  </p>
+                </div>
 
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => handleTogglePump(device)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition duration-150 ${
+                      device.pumpStatus
+                        ? 'bg-red-50 hover:bg-red-100 text-red-600'
+                        : 'bg-green-50 hover:bg-green-100 text-green-600'
+                    }`}
+                  >
+                    {device.pumpStatus ? 'Tắt bơm' : 'Bật bơm'}
+                  </button>
                   <button
                     onClick={() => handleEditDevice(device)}
                     className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium transition duration-150"
@@ -271,49 +279,65 @@ const Devices = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên thiết bị <span className="text-red-500">*</span>
+                  Mã thiết bị <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="deviceId"
+                  value={formData.deviceId}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Nhập tên thiết bị"
+                  placeholder="Ví dụ: PUMP001, DEV001"
+                  disabled={editingDevice !== null}
                 />
+                {editingDevice && (
+                  <p className="text-xs text-gray-500 mt-1">Không thể thay đổi mã thiết bị</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Loại thiết bị <span className="text-red-500">*</span>
+                  Chế độ hoạt động
                 </label>
                 <select
-                  name="type"
-                  value={formData.type}
+                  name="mode"
+                  value={formData.mode}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
-                  <option value="sensor">Cảm biến</option>
-                  <option value="pump">Bơm nước</option>
-                  <option value="valve">Van nước</option>
+                  <option value="manual">Thủ công</option>
+                  <option value="auto">Tự động</option>
+                  <option value="schedule">Lịch trình</option>
+                  <option value="off">Tắt</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Trạng thái
+                  Trạng thái bơm
                 </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="online">Hoạt động</option>
-                  <option value="offline">Ngoại tuyến</option>
-                  <option value="error">Lỗi</option>
-                  <option value="maintenance">Bảo trì</option>
-                </select>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pumpStatus"
+                      checked={formData.pumpStatus === false}
+                      onChange={() => setFormData({ ...formData, pumpStatus: false })}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">Tắt</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pumpStatus"
+                      checked={formData.pumpStatus === true}
+                      onChange={() => setFormData({ ...formData, pumpStatus: true })}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">Bật</span>
+                  </label>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">
