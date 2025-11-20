@@ -102,7 +102,7 @@ const updateDevice = async (req, res) => {
     if (pumpStatus !== undefined) updateData.pumpStatus = pumpStatus;
     if (mode !== undefined) updateData.mode = mode;
 
-    const validation = validateDevice(updateData);
+    const validation = validateDevice(updateData, true); // isUpdate = true
     if (!validation.isValid) {
       return res.status(400).json({
         success: false,

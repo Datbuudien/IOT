@@ -51,11 +51,11 @@ const deviceSchema = {
 };
 
 // Validation functions
-const validateDevice = (deviceData) => {
+const validateDevice = (deviceData, isUpdate = false) => {
   const errors = [];
 
-  // Validate deviceId
-  if (!deviceData.deviceId || deviceData.deviceId.trim().length === 0) {
+  // Validate deviceId (chỉ bắt buộc khi tạo mới)
+  if (!isUpdate && (!deviceData.deviceId || deviceData.deviceId.trim().length === 0)) {
     errors.push('Mã thiết bị (deviceId) không được để trống');
   }
   if (deviceData.deviceId && deviceData.deviceId.length > 50) {

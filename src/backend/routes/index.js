@@ -8,6 +8,7 @@ const router = express.Router();
 // Import route modules
 const authRoutes = require('./auth');
 const deviceRoutes = require('./devices');
+const sensorDataRoutes = require('./sensorData');
 
 // Health check routes
 router.get('/', (req, res) => {
@@ -29,5 +30,6 @@ router.get('/health', (req, res) => {
 // API routes
 router.use('/api/auth', authRoutes);
 router.use('/api/devices', deviceRoutes);
+router.use('/api/sensor-data', sensorDataRoutes);
 
 module.exports = router;
