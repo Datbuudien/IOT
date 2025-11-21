@@ -1,8 +1,18 @@
 import apiClient from '../config/api';
 
 const deviceService = {
-  // Lấy danh sách devices
+  // Lấy danh sách devices (alias cho getAll)
   getDevices: async () => {
+    try {
+      const response = await apiClient.get('/api/devices');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { success: false, message: 'Không thể lấy danh sách devices' };
+    }
+  },
+
+  // Lấy danh sách devices (getAll - alias)
+  getAll: async () => {
     try {
       const response = await apiClient.get('/api/devices');
       return response.data;

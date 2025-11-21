@@ -89,7 +89,7 @@ const getLatestSensorDataByDevice = async (req, res) => {
 // Thêm sensor data mới (thường được gọi từ IoT device)
 const createSensorData = async (req, res) => {
   try {
-    const { deviceId, temperature, humidity, soil_moisture } = req.body;
+    const { deviceId, temperature, humidity, soil_moisture, weather_condition, water_level } = req.body;
 
     // Validate dữ liệu
     const validation = validateSensorData({ 
@@ -120,7 +120,9 @@ const createSensorData = async (req, res) => {
       deviceId,
       temperature,
       humidity,
-      soil_moisture
+      soil_moisture,
+      weather_condition,
+      water_level
     });
 
     res.status(201).json({

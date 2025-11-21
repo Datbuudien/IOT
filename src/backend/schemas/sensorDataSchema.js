@@ -32,6 +32,19 @@ const sensorDataSchema = {
     max: 100,
     description: 'Độ ẩm đất (%)'
   },
+  weather_condition: {
+    type: 'string',
+    required: false,
+    enum: ['sunny', 'cloudy', 'rainy', 'stormy'],
+    description: 'Điều kiện thời tiết: sunny (nắng), cloudy (nhiều mây), rainy (mưa), stormy (giông)'
+  },
+  water_level: {
+    type: 'number',
+    required: false,
+    min: 0,
+    max: 100,
+    description: 'Mực nước trong bể (%)'
+  },
   timestamp: {
     type: 'Date',
     required: true,
@@ -80,6 +93,23 @@ const validateSensorData = (sensorData) => {
   }
   if (sensorData.soil_moisture < 0 || sensorData.soil_moisture > 100) {
     errors.push('Độ ẩm đất phải trong khoảng 0% đến 100%');
+  }
+
+  // Validate weather_condition (optional)
+  if (sensorData.weather_condition !== undefined) {
+    const validWeathers = ['sunny', 'cloudy', 'rainy', 'stormy'];
+    if (!validWeathers.includes(sensorData.weather_condition)) {
+      errors.push('Điều kiện thời tiết phải là: sunny, cloudy, rainy, hoặc stormy');
+    }
+  }
+
+  // Validate water_level (optional)
+  if (sensorData.water_level !== undefined) {
+    if (typeof sensorData.water_level !== 'number') {
+      errors.push('Mực nước phải là số');
+    } else if (sensorData.water_level < 0 || sensorData.water_level > 100) {
+      errors.push('Mực nước phải từ 0-100%');
+    }
   }
 
   return {

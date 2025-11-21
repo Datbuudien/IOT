@@ -19,8 +19,10 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^7.0.0"
+    "mongodb": "^7.0.0",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

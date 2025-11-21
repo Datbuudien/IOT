@@ -41,6 +41,39 @@ const getRandomSoilMoisture = () => {
   return parseFloat((base + variation).toFixed(1));
 };
 
+// Hàm tạo điều kiện thời tiết ngẫu nhiên
+let weatherState = 'sunny';
+let weatherChangeCounter = 0;
+const getRandomWeather = () => {
+  weatherChangeCounter++;
+  
+  // Thay đổi thời tiết mỗi 12 lần (60 giây)
+  if (weatherChangeCounter % 12 === 0) {
+    const rand = Math.random();
+    if (rand < 0.15) weatherState = 'stormy';     // 15% giông
+    else if (rand < 0.35) weatherState = 'rainy'; // 20% mưa
+    else if (rand < 0.65) weatherState = 'cloudy';// 30% nhiều mây
+    else weatherState = 'sunny';                   // 35% nắng
+    
+    const icons = {
+      'sunny': '☀️ Nắng',
+      'cloudy': '☁️ Nhiều mây',
+      'rainy': '🌧️ Mưa',
+      'stormy': '⛈️ Giông'
+    };
+    console.log(`\n🌤️ Thời tiết thay đổi: ${icons[weatherState]}\n`);
+  }
+  
+  return weatherState;
+};
+
+// Hàm tạo mực nước trong bể ngẫu nhiên (30-95%)
+const getRandomWaterLevel = () => {
+  const base = 70; // Mực nước trung bình
+  const variation = Math.random() * 40 - 20; // Dao động ±20%
+  return parseFloat((base + variation).toFixed(1));
+};
+
 // Đăng nhập để lấy token
 async function login() {
   try {
@@ -93,19 +126,28 @@ async function getDevices() {
 // Gửi dữ liệu cảm biến cho một device
 async function sendSensorData(device) {
   try {
+    const weather = getRandomWeather();
     const data = {
       deviceId: device._id,
       temperature: getRandomTemperature(),
       humidity: getRandomHumidity(),
-      soil_moisture: getRandomSoilMoisture()
+      soil_moisture: getRandomSoilMoisture(),
+      weather_condition: weather,
+      water_level: getRandomWaterLevel()
     };
     
     const response = await axios.post(`${CONFIG.API_URL}/sensor-data`, data, {
       headers: { Authorization: `Bearer ${authToken}` }
     });
     
+    const weatherIcons = {
+      'sunny': '☀️',
+      'cloudy': '☁️',
+      'rainy': '🌧️',
+      'stormy': '⛈️'
+    };
     const timestamp = new Date().toLocaleTimeString('vi-VN');
-    console.log(`[${timestamp}] 📡 ${device.deviceId}: ${data.temperature}°C, ${data.humidity}% RH, ${data.soil_moisture}% SM`);
+    console.log(`[${timestamp}] ${weatherIcons[weather]} ${device.deviceId}: ${data.temperature}°C, ${data.humidity}% RH, ${data.soil_moisture}% SM, 💧${data.water_level}% Water`);
     
     return true;
   } catch (error) {

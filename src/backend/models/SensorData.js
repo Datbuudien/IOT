@@ -80,6 +80,16 @@ class SensorData {
       timestamp: sensorData.timestamp || new Date()
     };
 
+    // Thêm weather_condition nếu có
+    if (sensorData.weather_condition !== undefined) {
+      newData.weather_condition = sensorData.weather_condition;
+    }
+
+    // Thêm water_level nếu có
+    if (sensorData.water_level !== undefined) {
+      newData.water_level = sensorData.water_level;
+    }
+
     const result = await collection.insertOne(newData);
     return {
       _id: result.insertedId,
@@ -121,7 +131,8 @@ class SensorData {
             _id: null,
             avgTemperature: { $avg: '$temperature' },
             avgHumidity: { $avg: '$humidity' },
-            avgSoilMoisture: { $avg: '$soil_moisture' }
+            avgSoilMoisture: { $avg: '$soil_moisture' },
+            avgWaterLevel: { $avg: '$water_level' }
           }
         }
       ])

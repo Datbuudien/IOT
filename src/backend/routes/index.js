@@ -9,6 +9,9 @@ const router = express.Router();
 const authRoutes = require('./auth');
 const deviceRoutes = require('./devices');
 const sensorDataRoutes = require('./sensorData');
+const scheduleRoutes = require('./schedule');
+const analyticsRoutes = require('./analytics');
+const weatherRoutes = require('./weather');
 
 // Health check routes
 router.get('/', (req, res) => {
@@ -31,5 +34,8 @@ router.get('/health', (req, res) => {
 router.use('/api/auth', authRoutes);
 router.use('/api/devices', deviceRoutes);
 router.use('/api/sensor-data', sensorDataRoutes);
+router.use('/api/schedules', scheduleRoutes);
+router.use('/api/analytics', analyticsRoutes);
+router.use('/api/weather', weatherRoutes);
 
 module.exports = router;

@@ -17,6 +17,10 @@ const startServer = async () => {
     await connectDB();
     console.log('✅ Database connected successfully');
     
+    // Khởi động Scheduler Service
+    const schedulerService = require('./services/schedulerService');
+    await schedulerService.start();
+    
     // Khởi động Express server
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
@@ -62,3 +66,4 @@ process.on('unhandledRejection', (error) => {
 });
 
 startServer();
+

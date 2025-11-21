@@ -73,11 +73,11 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 Phase 1 - Core Features (Bắt buộc)
 ✅ Login/Register
 ✅ Dashboard/Home
-🔨 Quản lý thiết bị
+✅ Quản lý thiết bị
 🔨 Real-time monitoring
 Phase 2 - Automation (Quan trọng)
 🔨 Lịch tưới tự động
-🔨 Rule-based automation
+✅ Rule-based automation
 🔨 Notifications
 Phase 3 - Analytics (Nâng cao)
 🔨 Lịch sử & thống kê
