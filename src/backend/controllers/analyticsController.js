@@ -145,25 +145,29 @@ const getStatistics = async (req, res) => {
     }
 
     // Build time filter (inclusive upper bound = now)
-    const now = new Date();
+    // Tính toán theo UTC để tương thích với cả dữ liệu cũ và mới
+    // Khi hiển thị sẽ convert sang GMT+7
+    const now = new Date(); // UTC hiện tại
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
       if (endDate) query.timestamp.$lte = new Date(endDate);
       else query.timestamp.$lte = now;
     } else if (timeRange) {
-      const tsFilter = new Date(now);
+      // Tính toán theo UTC (không có offset)
+      let tsFilter = new Date(now);
+      
       if (timeRange === '12h') {
-        tsFilter.setHours(tsFilter.getHours() - 12);
+        tsFilter = new Date(now.getTime() - (12 * 60 * 60 * 1000)); // Trừ 12 giờ
       } else if (timeRange === '24h') {
-        tsFilter.setHours(tsFilter.getHours() - 24);
+        tsFilter = new Date(now.getTime() - (24 * 60 * 60 * 1000)); // Trừ 24 giờ
       } else if (timeRange === '7') {
-        tsFilter.setDate(tsFilter.getDate() - 7);
+        tsFilter = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); // Trừ 7 ngày
       } else if (timeRange === '30') {
-        tsFilter.setDate(tsFilter.getDate() - 30);
+        tsFilter = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // Trừ 30 ngày
       } else if (!Number.isNaN(Number(timeRange))) {
         // fallback: if timeRange is a number => treat as days
-        tsFilter.setDate(tsFilter.getDate() - Number(timeRange));
+        tsFilter = new Date(now.getTime() - (Number(timeRange) * 24 * 60 * 60 * 1000));
       }
       query.timestamp = { $gte: tsFilter, $lte: now };
       console.log(`📅 Time filter: ${tsFilter.toISOString()} to ${now.toISOString()}`);
@@ -287,9 +291,9 @@ const getHourlyData = async (req, res) => {
     const query = { ...deviceQuery.query };
 
     // Get data from last N hours (with upper bound = now)
-    const now = new Date();
-    const hoursAgo = new Date();
-    hoursAgo.setHours(hoursAgo.getHours() - parseInt(hours));
+    // Tính toán theo UTC để tương thích với cả dữ liệu cũ và mới
+    const now = new Date(); // UTC hiện tại
+    const hoursAgo = new Date(now.getTime() - (parseInt(hours) * 60 * 60 * 1000)); // Trừ N giờ
     query.timestamp = { $gte: hoursAgo, $lte: now };
     
     console.log(`📊 Hourly data query: ${hoursAgo.toISOString()} to ${now.toISOString()}`);
@@ -317,15 +321,26 @@ const getHourlyData = async (req, res) => {
 
     console.log(`📈 Found ${data.length} hourly data points`);
 
-    const chartData = data.map(d => ({
-      time: `${String(d._id.day).padStart(2, '0')}/${String(d._id.month).padStart(2, '0')} ${String(d._id.hour).padStart(2, '0')}:00`,
-      temperature: Math.round((d.avgTemperature || 0) * 10) / 10,
-      humidity: Math.round((d.avgHumidity || 0) * 10) / 10,
-      soilMoisture: Math.round((d.avgSoilMoisture || 0) * 10) / 10,
-      waterLevel: Math.round((d.avgWaterLevel || 0) * 10) / 10,
-      count: d.count,
-      timestamp: d.timestamp
-    }));
+    const chartData = data.map(d => {
+      // Convert timestamp từ UTC sang GMT+7 để hiển thị đúng múi giờ Việt Nam
+      const timestamp = d.timestamp ? new Date(d.timestamp) : new Date();
+      
+      // Format time theo GMT+7 (cộng 7 giờ vào UTC)
+      const gmt7Time = new Date(timestamp.getTime() + (7 * 60 * 60 * 1000));
+      const day = String(gmt7Time.getUTCDate()).padStart(2, '0');
+      const month = String(gmt7Time.getUTCMonth() + 1).padStart(2, '0');
+      const hour = String(gmt7Time.getUTCHours()).padStart(2, '0');
+      
+      return {
+        time: `${day}/${month} ${hour}:00`,
+        temperature: Math.round((d.avgTemperature || 0) * 10) / 10,
+        humidity: Math.round((d.avgHumidity || 0) * 10) / 10,
+        soilMoisture: Math.round((d.avgSoilMoisture || 0) * 10) / 10,
+        waterLevel: Math.round((d.avgWaterLevel || 0) * 10) / 10,
+        count: d.count,
+        timestamp: d.timestamp
+      };
+    });
 
     res.json({
       success: true,
@@ -373,9 +388,9 @@ const getDailyData = async (req, res) => {
     const query = { ...deviceQuery.query };
 
     // Get data from last N days (with upper bound = now)
-    const now = new Date();
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - parseInt(days));
+    // Tính toán theo UTC để tương thích với cả dữ liệu cũ và mới
+    const now = new Date(); // UTC hiện tại
+    const daysAgo = new Date(now.getTime() - (parseInt(days) * 24 * 60 * 60 * 1000)); // Trừ N ngày
     query.timestamp = { $gte: daysAgo, $lte: now };
     
     console.log(`📊 Daily data query: ${daysAgo.toISOString()} to ${now.toISOString()}`);
@@ -404,17 +419,28 @@ const getDailyData = async (req, res) => {
 
     console.log(`📈 Found ${data.length} daily data points`);
 
-    const chartData = data.map(d => ({
-      date: `${String(d._id.day).padStart(2, '0')}/${String(d._id.month).padStart(2, '0')}/${d._id.year}`,
-      temperature: Math.round((d.avgTemperature || 0) * 10) / 10,
-      humidity: Math.round((d.avgHumidity || 0) * 10) / 10,
-      soilMoisture: Math.round((d.avgSoilMoisture || 0) * 10) / 10,
-      waterLevel: Math.round((d.avgWaterLevel || 0) * 10) / 10,
-      minTemp: d.minTemperature,
-      maxTemp: d.maxTemperature,
-      count: d.count,
-      timestamp: d.timestamp
-    }));
+    const chartData = data.map(d => {
+      // Convert timestamp từ UTC sang GMT+7 để hiển thị đúng múi giờ Việt Nam
+      const timestamp = d.timestamp ? new Date(d.timestamp) : new Date();
+      
+      // Format date theo GMT+7 (cộng 7 giờ vào UTC)
+      const gmt7Time = new Date(timestamp.getTime() + (7 * 60 * 60 * 1000));
+      const day = String(gmt7Time.getUTCDate()).padStart(2, '0');
+      const month = String(gmt7Time.getUTCMonth() + 1).padStart(2, '0');
+      const year = gmt7Time.getUTCFullYear();
+      
+      return {
+        date: `${day}/${month}/${year}`,
+        temperature: Math.round((d.avgTemperature || 0) * 10) / 10,
+        humidity: Math.round((d.avgHumidity || 0) * 10) / 10,
+        soilMoisture: Math.round((d.avgSoilMoisture || 0) * 10) / 10,
+        waterLevel: Math.round((d.avgWaterLevel || 0) * 10) / 10,
+        minTemp: d.minTemperature,
+        maxTemp: d.maxTemperature,
+        count: d.count,
+        timestamp: d.timestamp
+      };
+    });
 
     res.json({
       success: true,

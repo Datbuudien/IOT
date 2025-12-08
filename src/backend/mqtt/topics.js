@@ -42,6 +42,13 @@ const Topics = {
    * Payload: { threshold: {...}, schedule: {...}, ... }
    */
   DEVICE_CONFIG: (deviceId) => `iot/device/${deviceId}/config`,
+
+  /**
+   * Firmware update cho thiết bị
+   * Format: iot/device/{deviceId}/firmware/update
+   * Payload: { version, firmwareUrl, firmwareSize, checksum, action: "start_update" }
+   */
+  FIRMWARE_UPDATE: (deviceId) => `iot/device/${deviceId}/firmware/update`,
   
   // ===== Wildcard patterns (để subscribe nhiều thiết bị) =====
   
@@ -56,6 +63,12 @@ const Topics = {
    * Pattern: iot/device/+/status
    */
   ALL_DEVICE_STATUS: 'iot/device/+/status',
+  
+  /**
+   * Subscribe tất cả heartbeat từ mọi thiết bị
+   * Pattern: iot/device/+/heartbeat
+   */
+  ALL_DEVICE_HEARTBEAT: 'iot/device/+/heartbeat',
 };
 
 module.exports = Topics;

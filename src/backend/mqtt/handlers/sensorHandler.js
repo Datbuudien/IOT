@@ -5,6 +5,7 @@
 
 const SensorData = require('../../models/SensorData');
 const Device = require('../../models/Device');
+const deviceHandler = require('./deviceHandler');
 
 // Helper: ép kiểu số và giới hạn phạm vi
 const toNumber = (value, min = -Infinity, max = Infinity) => {
@@ -35,30 +36,9 @@ class SensorHandler {
       const humidity = toNumber(data.humidity, 0, 100);
       const soilMoisture = toNumber(data.soilMoisture, 0, 100);
 
-      // Xử lý timestamp: ESP32 có thể gửi millis() thay vì Unix timestamp
-      // Validate timestamp hợp lệ (phải là Unix timestamp trong khoảng hợp lý)
-      let timestamp = new Date();
-      if (data.timestamp) {
-        const ts = Number(data.timestamp);
-        // Kiểm tra nếu là Unix timestamp hợp lệ (milliseconds từ 2020-01-01 đến hiện tại)
-        const minTimestamp = new Date('2020-01-01').getTime();
-        const maxTimestamp = Date.now() + 86400000; // Cho phép sai lệch 1 ngày trong tương lai
-        
-        if (!Number.isNaN(ts) && ts >= minTimestamp && ts <= maxTimestamp) {
-          // Timestamp hợp lệ (Unix timestamp milliseconds)
-          timestamp = new Date(ts);
-        } else if (!Number.isNaN(ts) && ts < 1000000000) {
-          // Nếu timestamp < 1000000000, có thể là Unix timestamp seconds, convert sang milliseconds
-          const tsMs = ts * 1000;
-          if (tsMs >= minTimestamp && tsMs <= maxTimestamp) {
-            timestamp = new Date(tsMs);
-          }
-          // Nếu vẫn không hợp lệ, dùng thời gian hiện tại (đã set ở trên)
-        } else {
-          // Timestamp không hợp lệ (có thể là millis() từ ESP32), dùng thời gian hiện tại
-          console.warn(`⚠️  Invalid timestamp from ${deviceId}: ${data.timestamp}, using current time`);
-        }
-      }
+      // Xử lý timestamp: ESP32 KHÔNG gửi timestamp, backend tự tạo
+      // MongoDB sẽ lưu dưới dạng UTC
+      const timestamp = new Date(); // Tạo timestamp hiện tại (UTC)
 
       // Tạo sensor data record (mapping đúng field trong DB)
       const sensorData = {
@@ -72,6 +52,10 @@ class SensorHandler {
 
       // Lưu vào database
       await SensorData.create(sensorData);
+
+      // Cập nhật trạng thái online khi nhận sensor data (thiết bị đang hoạt động)
+      // Gọi handleOnline để cập nhật lastSeen và status = online
+      await deviceHandler.handleOnline(deviceId, { timestamp: sensorData.timestamp });
 
       // Có thể thêm logic xử lý khác ở đây
       // Ví dụ: Kiểm tra ngưỡng, gửi cảnh báo, trigger automation, etc.

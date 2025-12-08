@@ -14,6 +14,9 @@ bool isRain;
 int soilMoisture;
 DHT dht(PIN_DHT, DHTTYPE);
 
+// Khai báo extern để truy cập deviceMode từ Config.h
+extern String deviceMode;
+
 // ===== MQTT Client =====
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -21,19 +24,20 @@ PubSubClient mqttClient(espClient);
 // ===== MQTT Topics =====
 String topicSensorData;
 String topicStatus;
-String topicHeartbeat;
+String topicPumpStatus;
 String topicCommand;
 String topicConfig;
+String topicFirmware;
 
 // ===== Timing =====
 unsigned long lastSensorPublish = 0;
-const unsigned long SENSOR_PUBLISH_INTERVAL = 30000;  // Gửi dữ liệu mỗi 5 giây
+  // Gửi dữ liệu mỗi 5 giây
 
 unsigned long lastHeartbeat = 0;
-const unsigned long HEARTBEAT_INTERVAL = 30000;  // Heartbeat mỗi 30 giây
+ // Heartbeat mỗi 30 giây
 
 unsigned long lastLoop = 0;
-const unsigned long LOOP_INTERVAL = 5000;  // Logic điều khiển mỗi 5 giây
+
 
 void setup() {
   Serial.begin(115200);
@@ -75,9 +79,10 @@ void loop() {
   isRain = readRainStatus();
   soilMoisture = readSoilMoisture();
   
-  // Logic điều khiển bơm
+  // Logic điều khiển bơm (chỉ chạy khi mode = "auto")
   if (millis() - lastLoop >= LOOP_INTERVAL) {
-    controlPump(soilMoisture, temperature, humidity, isRain);
+    controlPump(soilMoisture, temperature, humidity, isRain, deviceMode);
+    publishPumpStatus();
     lastLoop = millis();
   }
   
@@ -88,10 +93,10 @@ void loop() {
   }
   
   // Gửi heartbeat
-  if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
-    publishHeartbeat();
-    lastHeartbeat = millis();
-  }
+  // if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
+  //   publishHeartbeat();
+  //   lastHeartbeat = millis();
+  // }
   
   delay(100);
 }

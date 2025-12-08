@@ -16,13 +16,15 @@ extern WiFiClient espClient;
 extern PubSubClient mqttClient;
 extern String topicSensorData;
 extern String topicStatus;
-extern String topicHeartbeat;
+extern String topicPumpStatus;
 extern String topicCommand;
 extern String topicConfig;
+extern String topicFirmware;
 
 // Forward declarations cho các hàm (phải khai báo trước khi sử dụng)
 void handleCommand(String message);
 void handleConfig(String message);
+void handleFirmwareUpdate(String message);
 void publishStatus(String status);
 void reconnectMQTT();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
@@ -33,16 +35,17 @@ void mqttCallback(char* topic, byte* payload, unsigned int length);
 void setupMQTT() {
   // Kiểm tra WiFi trước
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️  WiFi not connected. Cannot setup MQTT.");
+    Serial.println("WiFi not connected. Cannot setup MQTT.");
     return;
   }
   
   // Khởi tạo topics
   topicSensorData = "iot/device/" + String(deviceId) + "/sensor/data";
   topicStatus = "iot/device/" + String(deviceId) + "/status";
-  topicHeartbeat = "iot/device/" + String(deviceId) + "/heartbeat";
+  topicPumpStatus = "iot/device/" + String(deviceId) + "/heartbeat"; // Dùng heartbeat topic để backend nhận được
   topicCommand = "iot/device/" + String(deviceId) + "/command";
   topicConfig = "iot/device/" + String(deviceId) + "/config";
+  topicFirmware = "iot/device/" + String(deviceId) + "/firmware/update";
   
   // Cấu hình MQTT client
   mqttClient.setServer(mqtt_broker, mqtt_port);
@@ -94,6 +97,7 @@ void reconnectMQTT() {
       // Subscribe topics để nhận lệnh
       mqttClient.subscribe(topicCommand.c_str());
       mqttClient.subscribe(topicConfig.c_str());
+      mqttClient.subscribe(topicFirmware.c_str());
       Serial.println("📡 Subscribed to command topics");
       
       // Gửi trạng thái online
@@ -147,6 +151,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     handleCommand(message);
   } else if (String(topic) == topicConfig) {
     handleConfig(message);
+  } else if (String(topic) == topicFirmware) {
+    handleFirmwareUpdate(message);
   }
 }
 
@@ -198,17 +204,24 @@ void publishStatus(String status) {
 /**
  * Gửi heartbeat
  */
-void publishHeartbeat() {
+void publishPumpStatus() {
   if (!mqttClient.connected()) {
     return;
   }
   
-  JSONVar doc;
-  doc["timestamp"] = (int)millis();
+  // Đọc trạng thái relay1 (LOW = đang hoạt động, HIGH = tắt)
+  int relay1State = digitalRead(PIN_RELAY_1);
+  bool relay1Active = (relay1State == LOW); // LOW = đang hoạt động
   
+  JSONVar doc;
+  doc["relay1Status"] = relay1Active; // true = đang hoạt động (LOW), false = tắt (HIGH)
+  doc["timestamp"] = (int)millis();
   String payload = JSON.stringify(doc);
   
-  mqttClient.publish(topicHeartbeat.c_str(), payload.c_str());
+  // Debug: Log payload trước khi gửi
+
+  
+  mqttClient.publish(topicPumpStatus.c_str(), payload.c_str());
 }
 
 #endif

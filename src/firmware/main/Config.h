@@ -30,4 +30,14 @@ const int SOIL_WATER_VALUE = 1800; // Giá trị khi ướt
 // Cảm biến Âm thanh (MAX4466/9814)
 const int MIC_NOISE_THRESHOLD = 500; // Ngưỡng phát hiện tiếng ồn
 
+// --- 6. CẤU HÌNH CHẾ ĐỘ HOẠT ĐỘNG ---
+// Mode mặc định: "auto" (tự động), "manual" (thủ công), "schedule" (lịch trình)
+// Mode sẽ được cập nhật từ Backend qua MQTT config
+String deviceMode = "auto"; // Mặc định là tự động
+
+const unsigned long LOOP_INTERVAL = 5000;  // Logic điều khiển mỗi 5 giây
+const unsigned long HEARTBEAT_INTERVAL = 30000; 
+const unsigned long SENSOR_PUBLISH_INTERVAL = 30000;
+
+
 #endif

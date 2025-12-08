@@ -84,6 +84,9 @@ class MQTTService {
     // Subscribe tất cả device status
     this.subscribe(Topics.ALL_DEVICE_STATUS);
     
+    // Subscribe tất cả device heartbeat (QUAN TRỌNG: để nhận relay1Status)
+    this.subscribe(Topics.ALL_DEVICE_HEARTBEAT);
+    
     console.log('✅ Subscribed to default MQTT topics');
   }
 
@@ -159,7 +162,14 @@ class MQTTService {
    */
   handleMessage(topic, message) {
     try {
-      const payload = JSON.parse(message.toString());
+      const rawMessage = message.toString();
+      
+      // Debug: Log raw message cho heartbeat để kiểm tra
+      if (topic.includes('/heartbeat')) {
+        console.log(`📥 Raw heartbeat message:`, rawMessage);
+      }
+      
+      const payload = JSON.parse(rawMessage);
       
       // Extract deviceId từ topic (ví dụ: iot/device/ESP32_001/sensor/data)
       const topicParts = topic.split('/');
@@ -168,7 +178,10 @@ class MQTTService {
       // Route message đến handler phù hợp
       if (topic.includes('/sensor/data')) {
         sensorHandler.handle(deviceId, payload);
-      } else if (topic.includes('/status') || topic.includes('/heartbeat')) {
+      } else if (topic.includes('/heartbeat')) {
+        // Heartbeat cũng cập nhật status = online
+        deviceHandler.handleOnline(deviceId, payload);
+      } else if (topic.includes('/status')) {
         deviceHandler.handleStatus(deviceId, payload);
       } else if (topic.includes('/online')) {
         deviceHandler.handleOnline(deviceId, payload);
@@ -177,6 +190,7 @@ class MQTTService {
       }
     } catch (error) {
       console.error(`❌ Error parsing message from ${topic}:`, error);
+      console.error(`❌ Raw message:`, message.toString());
     }
   }
 
