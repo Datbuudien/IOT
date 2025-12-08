@@ -156,14 +156,69 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
   http.begin(firmwareUrl);
   
   // Set timeout
-  http.setTimeout(30000); // 30 seconds
+  http.setTimeout(120000); // 120 seconds (2 phút) cho file lớn
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS); // Follow redirects (302, 301, etc.)
   
   // Start download
   int httpCode = http.GET();
   
+  Serial.print("HTTP Code: ");
+  Serial.println(httpCode);
+  
+  // Xử lý redirect (301, 302, 303, 307)
+  if (httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND || httpCode == HTTP_CODE_TEMPORARY_REDIRECT || httpCode == 303) {
+    String location = http.header("Location");
+    Serial.print("⚠️  Redirect detected. New location: ");
+    Serial.println(location);
+    
+    http.end();
+    
+    // Thử lại với URL mới
+    if (location.length() > 0) {
+      Serial.println("🔄 Retrying with redirect URL...");
+      http.begin(location);
+      http.setTimeout(120000);
+      http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+      httpCode = http.GET();
+      Serial.print("HTTP Code (after redirect): ");
+      Serial.println(httpCode);
+    }
+  }
+  
   if (httpCode != HTTP_CODE_OK) {
     Serial.print("❌ HTTP Error: ");
     Serial.println(httpCode);
+    
+    // Giải thích mã lỗi
+    switch(httpCode) {
+      case HTTP_CODE_MOVED_PERMANENTLY:
+        Serial.println("   → 301: Moved Permanently (redirect)");
+        break;
+      case HTTP_CODE_FOUND:
+        Serial.println("   → 302: Found (redirect)");
+        break;
+      case HTTP_CODE_TEMPORARY_REDIRECT:
+        Serial.println("   → 307: Temporary Redirect");
+        break;
+      case 303:
+        Serial.println("   → 303: See Other (redirect - chuyển sang GET)");
+        break;
+      case HTTP_CODE_BAD_REQUEST:
+        Serial.println("   → 400: Bad Request (URL sai)");
+        break;
+      case HTTP_CODE_UNAUTHORIZED:
+        Serial.println("   → 401: Unauthorized (cần authentication)");
+        break;
+      case HTTP_CODE_FORBIDDEN:
+        Serial.println("   → 403: Forbidden (không có quyền)");
+        break;
+      case HTTP_CODE_NOT_FOUND:
+        Serial.println("   → 404: Not Found (file không tồn tại)");
+        break;
+      default:
+        Serial.println("   → Unknown error");
+    }
+    
     http.end();
     return;
   }
@@ -203,34 +258,121 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
   size_t written = 0;
   size_t totalSize = contentLength;
   
-  uint8_t buffer[1024] = { 0 };
+  // Dùng heap thay vì stack để tránh stack overflow
+  // Buffer 4KB trên stack có thể gây crash!
+  uint8_t* buffer = (uint8_t*)malloc(4096);
+  if (!buffer) {
+    Serial.println("❌ Failed to allocate buffer! Out of memory.");
+    http.end();
+    return;
+  }
+  
+  unsigned long lastActivity = millis();
+  unsigned long lastProgress = millis();
+  const unsigned long TIMEOUT_MS = 180000; // 3 phút timeout (tăng từ 1 phút) - cho file lớn
+  const unsigned long PROGRESS_INTERVAL = 5000; // Hiển thị progress mỗi 5 giây
+  
+  // Forward declaration
+  extern PubSubClient mqttClient;
+  
+  Serial.print("📊 Starting download... Total: ");
+  Serial.print(totalSize);
+  Serial.println(" bytes");
   
   while (http.connected() && (written < totalSize)) {
+    // Kiểm tra timeout - nếu không có data trong 1 phút
+    if (millis() - lastActivity > TIMEOUT_MS) {
+      Serial.println("❌ Download timeout! No data received for 1 minute.");
+      Serial.print("Downloaded: ");
+      Serial.print(written);
+      Serial.print("/");
+      Serial.println(totalSize);
+      Update.abort();
+      free(buffer); // Free buffer trước khi return
+      http.end();
+      return;
+    }
+    
+    // Kiểm tra WiFi connection
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("❌ WiFi disconnected during download!");
+      Update.abort();
+      free(buffer); // Free buffer trước khi return
+      http.end();
+      return;
+    }
+    
     // Read available data
     size_t available = stream->available();
     
     if (available) {
-      int c = stream->readBytes(buffer, ((available > sizeof(buffer)) ? sizeof(buffer) : available));
+      lastActivity = millis(); // Reset timeout
       
-      // Write to flash
-      Update.write(buffer, c);
-      written += c;
+      int c = stream->readBytes(buffer, ((available > 4096) ? 4096 : available));
       
-      // Print progress
-      if (written % 10000 == 0 || written == totalSize) {
-        int progress = (written * 100) / totalSize;
-        Serial.print("📊 Progress: ");
-        Serial.print(progress);
-        Serial.print("% (");
-        Serial.print(written);
-        Serial.print("/");
-        Serial.print(totalSize);
-        Serial.println(" bytes)");
+      if (c > 0) {
+        // Write to flash
+        size_t writtenBytes = Update.write(buffer, c);
+        if (writtenBytes != c) {
+          Serial.print("❌ Flash write error! Expected: ");
+          Serial.print(c);
+          Serial.print(", Written: ");
+          Serial.println(writtenBytes);
+          Update.abort();
+          free(buffer); // Free buffer trước khi return
+          http.end();
+          return;
+        }
+        
+        written += writtenBytes;
+        
+        // Print progress mỗi 5 giây hoặc mỗi 10KB
+        unsigned long now = millis();
+        if ((now - lastProgress > PROGRESS_INTERVAL) || (written % 10000 == 0) || (written == totalSize)) {
+          int progress = (written * 100) / totalSize;
+          Serial.print("📊 Progress: ");
+          Serial.print(progress);
+          Serial.print("% (");
+          Serial.print(written);
+          Serial.print("/");
+          Serial.print(totalSize);
+          Serial.print(" bytes) - ");
+          Serial.print((written * 1000) / (now - (millis() - (now - lastProgress)))); // bytes/second estimate
+          Serial.println(" bytes/s");
+          lastProgress = now;
+        }
       }
+    } else {
+      // Không có data, đợi một chút
+      delay(10);
     }
     
-    delay(1);
+    // Maintain MQTT connection (nhưng không block)
+    mqttClient.loop();
+    
+    // Yield để tránh watchdog timeout
+    yield();
   }
+  
+  // Kiểm tra xem đã download đủ chưa
+  if (written < totalSize) {
+    Serial.print("❌ Download incomplete! Expected: ");
+    Serial.print(totalSize);
+    Serial.print(", Got: ");
+    Serial.println(written);
+    Serial.println("Possible reasons: Connection lost, server closed connection, or timeout");
+    Update.abort();
+    free(buffer); // Free buffer trước khi return
+    http.end();
+    return;
+  }
+  
+  Serial.print("✅ Download complete! Total: ");
+  Serial.print(written);
+  Serial.println(" bytes");
+  
+  // Free buffer (nhớ free sau khi dùng!)
+  free(buffer);
   
   http.end();
   

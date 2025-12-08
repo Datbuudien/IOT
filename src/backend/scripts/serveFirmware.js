@@ -76,19 +76,65 @@ console.log(`Size: ${(firmwareStats.size / 1024).toFixed(2)} KB (${firmwareStats
 console.log(`Modified: ${firmwareStats.mtime.toLocaleString()}`);
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/' || req.url === `/${firmwareName}`) {
+  // Cho phép truy cập từ bất kỳ đâu (CORS)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Xử lý OPTIONS request (CORS preflight)
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+  
+  // Chỉ cho phép GET và HEAD
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405, { 'Allow': 'GET, HEAD' });
+    res.end('Method Not Allowed');
+    return;
+  }
+  
+  // Serve file firmware
+  if (req.url === '/' || req.url === `/${firmwareName}` || req.url === '/firmware.bin') {
     const fileStream = fs.createReadStream(firmwarePath);
     
+    // Headers cho ESP32 OTA update
     res.writeHead(200, {
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${firmwareName}"`,
-      'Content-Length': firmwareStats.size
+      'Content-Length': firmwareStats.size,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'no-cache'
     });
     
-    fileStream.pipe(res);
+    // Log request
+    const clientIP = req.socket.remoteAddress;
+    console.log(`📥 ${req.method} ${req.url} from ${clientIP}`);
+    
+    if (req.method === 'HEAD') {
+      // HEAD request - chỉ trả về headers
+      res.end();
+    } else {
+      // GET request - stream file
+      fileStream.on('error', (err) => {
+        console.error('❌ Error reading file:', err);
+        if (!res.headersSent) {
+          res.writeHead(500);
+          res.end('Internal Server Error');
+        }
+      });
+      
+      fileStream.pipe(res);
+      
+      // Log khi hoàn thành
+      fileStream.on('end', () => {
+        console.log(`✅ File sent successfully (${firmwareStats.size} bytes)`);
+      });
+    }
   } else {
-    res.writeHead(404);
-    res.end('Not Found');
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found - Use /firmware.bin or /' + firmwareName);
   }
 });
 
