@@ -1,2 +1,7 @@
 .idea/
 .vscode/
+.md
+/QUICK_START_MQTT.md
+/PROJECT_STRUCTURE.md
+/INSTALL_MOSQUITTO.md
+/CHECK_MQTT.md

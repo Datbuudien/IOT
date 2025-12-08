@@ -1,82 +1,103 @@
-#include <Arduino.h>
+/*
+ * ESP32 Mic Sender với Handshake Mechanism
+ * Cơ chế Handshake cho Data Collection phù hợp Training AI
+ * 
+ * Workflow:
+ * 1. Python gửi 'R' → ESP32 bắt đầu thu và gửi raw data
+ * 2. Python gửi 'S' → ESP32 dừng thu
+ * 
+ * Đảm bảo đồng bộ, không có dữ liệu rác, phù hợp cho training
+ */
 
-// Cấu hình chân
-#define PIN_MIC 35  // MAX4466 kết nối với GPIO 35
+#include <WiFi.h>
 
-// Cấu hình audio
-#define SAMPLE_RATE 16000
-#define RECORD_DURATION 1000  // 1 giây (ms)
-#define SAMPLES_COUNT (SAMPLE_RATE * RECORD_DURATION / 1000)  // 16000 samples
+const int MIC_PIN = 35; 
+const unsigned long SAMPLE_PERIOD_US = 62; // ~16kHz sample rate (62.5us = 16000Hz)
+const int PIN_RELAY = 13;
+bool isRecording = false; // Biến trạng thái
 
-// Buffer để lưu audio
-int16_t audio_buffer[SAMPLES_COUNT];
+// Cấu hình oversampling để giảm nhiễu ADC
+const int OVERSAMPLE_COUNT = 4; // Đọc 4 lần và lấy trung bình
 
 void setup() {
-  Serial.begin(115200);
-  delay(1000);
+  // Khởi tạo Serial với baud rate cực cao để truyền 16000 samples/giây
+  Serial.begin(921600);
   
-  pinMode(PIN_MIC, INPUT);
+  // Cấu hình ADC với attenuation 11dB (0-3.3V range)
+  // Điều này giúp ADC đọc chính xác hơn với MAX4466
+  analogSetAttenuation(ADC_11db);
+  analogReadResolution(12); // 12-bit resolution (0-4095)
   
-  Serial.println("\n=== ESP32 Voice Data Collector ===");
-  Serial.println("Sẵn sàng thu âm!");
-  Serial.println("Gửi lệnh 'RECORD' qua Serial để bắt đầu\n");
+  // Tắt WiFi để giảm nhiễu (nếu không cần WiFi)
+  // WiFi có thể gây nhiễu cho ADC
+  WiFi.mode(WIFI_OFF); // Uncomment nếu không cần WiFi
+  
+  pinMode(MIC_PIN, INPUT);
+  pinMode(PIN_RELAY, OUTPUT);
+  
+  // Chờ ESP32 và MAX4466 ổn định sau khi khởi động
+  delay(500);
+  
+  // Xóa buffer Serial để tránh dữ liệu cũ
+  Serial.flush();
+  while(Serial.available() > 0) {
+    Serial.read();
+  }
 }
- 
- void record_audio() {
-   Serial.println("RECORD_START");  // Báo hiệu bắt đầu thu
-   
-   unsigned long start_time = millis();
-   int sample_count = 0;
-   
-   while (sample_count < SAMPLES_COUNT) {
-     // Đọc từ ADC (MAX4466)
-     int raw = analogRead(PIN_MIC);
-     
-     // Convert từ 0-4095 (12-bit ADC) sang -32768 to 32767 (int16 range)
-     // Trung tâm ở 2048, scale factor = 16
-     audio_buffer[sample_count] = (int16_t)((raw - 2048) * 16);
-     sample_count++;
-     
-     // Delay để đảm bảo sample rate chính xác 16kHz
-     // 1 giây = 1,000,000 microseconds
-     // 1 sample = 1,000,000 / 16000 = 62.5 microseconds
-     delayMicroseconds(1000000 / SAMPLE_RATE);
-   }
-   
-   unsigned long elapsed = millis() - start_time;
-   Serial.printf("RECORD_END - Đã thu %d samples trong %lu ms\n", sample_count, elapsed);
- }
- 
- void send_audio_data() {
-   Serial.println("DATA_START");
-   
-   // Gửi số lượng samples (để PC biết cần đọc bao nhiêu)
-   Serial.println(SAMPLES_COUNT);
-   
-   // Gửi raw audio data (bytes)
-   // int16_t = 2 bytes, nên tổng cộng là SAMPLES_COUNT * 2 bytes
-   Serial.write((uint8_t*)audio_buffer, sizeof(audio_buffer));
-   
-   Serial.println("DATA_END");
-   Serial.flush();  // Đảm bảo gửi hết dữ liệu trước khi tiếp tục
- }
- 
- void loop() {
-   // Kiểm tra lệnh từ Serial
-   if (Serial.available() > 0) {
-     String cmd = Serial.readStringUntil('\n');
-     cmd.trim();  // Loại bỏ khoảng trắng
-     
-     if (cmd == "RECORD") {
-       Serial.println("Bắt đầu thu âm...");
-       record_audio();
-       
-       Serial.println("Đang gửi dữ liệu...");
-       send_audio_data();
-       
-       Serial.println("Hoàn thành!\n");
-     }
-   }
-   
-   delay(10);  // Tránh đọc Serial quá nhanh
- }
+
+void loop() {
+  // 1. HANDSHAKE: Kiểm tra lệnh từ Python
+  if (Serial.available() > 0) {
+    char cmd = Serial.read();
+    
+    if (cmd == 'R') {
+      // Lệnh 'R' = Start Recording
+      // Xóa buffer để đảm bảo không có dữ liệu cũ (quan trọng cho training!)
+      Serial.flush();
+      while(Serial.available() > 0) {
+        Serial.read(); // Xóa input buffer
+      }
+      delay(10); // Chờ ổn định ngắn
+      
+      // Bắt đầu thu âm
+      isRecording = true;
+      
+    } else if (cmd == 'S') {
+      // Lệnh 'S' = Stop Recording
+      isRecording = false;
+      Serial.flush(); // Đảm bảo gửi hết dữ liệu trước khi dừng
+    }
+  }
+
+  // 2. Thu và gửi raw data khi đang Recording
+  if (isRecording) {
+    digitalWrite(PIN_RELAY, LOW);
+    unsigned long startMicros = micros();
+    
+    // Đọc ADC với oversampling để giảm nhiễu
+    // Vẫn giữ nguyên bản từ MAX4466, chỉ giảm nhiễu do ADC
+    long sum = 0;
+    for(int i = 0; i < OVERSAMPLE_COUNT; i++) {
+      sum += analogRead(MIC_PIN);
+    }
+    int rawVal = sum / OVERSAMPLE_COUNT;
+    
+    // Gửi raw analog value dạng text (ví dụ: 2048\n)
+    // Định dạng đơn giản, Python sẽ xử lý phần còn lại
+    Serial.println(rawVal);
+    
+    // Kiểm tra buffer Serial để tránh overflow
+    while (Serial.availableForWrite() < 100) {
+      delayMicroseconds(50);
+    }
+    
+    // Đảm bảo sample rate chính xác 16kHz
+    unsigned long elapsed = micros() - startMicros;
+    if (elapsed < SAMPLE_PERIOD_US) {
+      delayMicroseconds(SAMPLE_PERIOD_US - elapsed);
+    }
+  }
+  else{
+    digitalWrite(PIN_RELAY, HIGH);
+  }
+}

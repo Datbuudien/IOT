@@ -7,7 +7,18 @@ const int PIN_SOIL = 34;      // Cảm biến Đất (Analog) -> GPIO 34
 const int PIN_RAIN = 32;      // Cảm biến Mưa (Digital) -> GPIO 32
 const int PIN_DHT  = 33;      // Cảm biến Nhiệt/Ẩm (DHT11) -> GPIO 33
 const int PIN_MIC  = 35;      // Cảm biến Âm thanh (Analog) -> GPIO 35
-const int PIN_RELAY_1 = 25;
+const int PIN_RELAY_1 = 13;
+const int PIN_RELAY_2 = 12;
+
+// --- 4. CẤU HÌNH WIFI ---
+const char* ssid = "iPhone (84)";
+const char* password = "12345678";
+
+// --- 5. CẤU HÌNH MQTT ---
+// Tạm thời dùng broker công cộng (không cần cài Mosquitto)
+const char* mqtt_broker = "broker.hivemq.com";  // Broker công cộng
+const int mqtt_port = 1883;
+const char* deviceId = "ESP32_001";  // ID thiết bị (thay đổi cho mỗi ESP32)
 // --- 2. CẤU HÌNH CẢM BIẾN ---
 #define DHTTYPE DHT11
 
