@@ -120,37 +120,37 @@ IOT/
 <div align="center">
 
 #### 1. Trang Đăng nhập
-![Trang đăng nhập](./doc/1.png)
+![Trang đăng nhập](./public/1.png)
 
 #### 2. Trang Đăng ký
-![Trang đăng ký](./doc/12.png)
+![Trang đăng ký](./public/12.png)
 
 #### 3. Dashboard Tổng quan
-![Dashboard](./doc/2.png)
+![Dashboard](./public/2.png)
 
 #### 4. Quản lý Thiết bị
-![Quản lý thiết bị](./doc/3.png)
+![Quản lý thiết bị](./public/3.png)
 
 #### 5. Lập lịch Tự động
-![Lập lịch](./doc/4.png)
+![Lập lịch](./public/4.png)
 
 #### 6. Phân tích & Thống kê
-![Phân tích](./doc/5.png)
+![Phân tích](./public/5.png)
 
 #### 7. Phân tích & Thống kê
-![Phân tích](./doc/6.png)
+![Phân tích](./public/6.png)
 
 #### 8. Phân tích & Thống kê
-![Phân tích](./doc/7.png)
+![Phân tích](./public/7.png)
 
 #### 9. Cập nhật Firmware
-![Cập nhật firmware](./doc/9.png)
+![Cập nhật firmware](./public/9.png)
 
 #### 10. Cập nhật Firmware Admin
-![Thông tin thời tiết](./doc/10.png)
+![Thông tin thời tiết](./public/10.png)
 
 #### 11. Cập nhật Firmware Admin
-![Thông tin thời tiết](./doc/11.png)
+![Thông tin thời tiết](./public/11.png)
 
 </div>
 
