@@ -1,5 +1,6 @@
 const Device = require('../models/Device');
 const { validateDevice } = require('../schemas/deviceSchema');
+const mqttService = require('../services/mqttService');
 
 // Lấy tất cả devices của user
 const getAllDevices = async (req, res) => {
@@ -111,6 +112,15 @@ const updateDevice = async (req, res) => {
       });
     }
 
+    // Lấy device để lấy deviceId (mã thiết bị) trước khi update
+    const device = await Device.findById(req.params.id, req.userId);
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy device'
+      });
+    }
+
     const result = await Device.update(req.params.id, req.userId, updateData);
 
     if (result.matchedCount === 0) {
@@ -118,6 +128,25 @@ const updateDevice = async (req, res) => {
         success: false,
         message: 'Không tìm thấy device'
       });
+    }
+
+    // Gửi MQTT command/config nếu có thay đổi
+    try {
+      if (updateData.mode !== undefined) {
+        // Gửi config để ESP32 biết chế độ mới
+        mqttService.sendConfig(device.deviceId, { mode: updateData.mode });
+        console.log(`📤 Sent config to ${device.deviceId}: mode = ${updateData.mode}`);
+      }
+      
+      if (updateData.pumpStatus !== undefined) {
+        // Gửi command để điều khiển bơm
+        const action = updateData.pumpStatus ? 'pump_on' : 'pump_off';
+        mqttService.sendCommand(device.deviceId, { action });
+        console.log(`📤 Sent command to ${device.deviceId}: ${action}`);
+      }
+    } catch (mqttError) {
+      console.error('⚠️  MQTT error (device still updated in DB):', mqttError);
+      // Không fail request nếu MQTT lỗi, vì DB đã được update
     }
 
     res.json({
@@ -158,10 +187,73 @@ const deleteDevice = async (req, res) => {
   }
 };
 
+// Gửi lệnh điều khiển qua MQTT
+const sendCommand = async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id, req.userId);
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy device'
+      });
+    }
+
+    const { action } = req.body;
+    if (!action) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu action trong request body'
+      });
+    }
+
+    mqttService.sendCommand(device.deviceId, { action, timestamp: new Date() });
+    
+    res.json({
+      success: true,
+      message: 'Đã gửi lệnh điều khiển'
+    });
+  } catch (error) {
+    console.error('Lỗi gửi lệnh:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server'
+    });
+  }
+};
+
+// Gửi cấu hình qua MQTT
+const sendConfig = async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id, req.userId);
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy device'
+      });
+    }
+
+    const config = req.body;
+    mqttService.sendConfig(device.deviceId, config);
+    
+    res.json({
+      success: true,
+      message: 'Đã gửi cấu hình'
+    });
+  } catch (error) {
+    console.error('Lỗi gửi cấu hình:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server'
+    });
+  }
+};
+
 module.exports = {
   getAllDevices,
   getDeviceById,
   createDevice,
   updateDevice,
-  deleteDevice
+  deleteDevice,
+  sendCommand,
+  sendConfig
 };

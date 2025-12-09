@@ -91,12 +91,19 @@ const createSensorData = async (req, res) => {
   try {
     const { deviceId, temperature, humidity, soil_moisture, weather_condition, water_level } = req.body;
 
+    // Helper ép kiểu số và giới hạn
+    const toNumber = (value, min = -Infinity, max = Infinity) => {
+      const num = Number(value);
+      if (Number.isNaN(num)) return null;
+      return Math.min(Math.max(num, min), max);
+    };
+
     // Validate dữ liệu
     const validation = validateSensorData({ 
       deviceId, 
-      temperature, 
-      humidity, 
-      soil_moisture 
+      temperature: toNumber(temperature),
+      humidity: toNumber(humidity, 0, 100),
+      soil_moisture: toNumber(soil_moisture, 0, 100),
     });
     
     if (!validation.isValid) {
@@ -118,11 +125,11 @@ const createSensorData = async (req, res) => {
 
     const newData = await SensorData.create({
       deviceId,
-      temperature,
-      humidity,
-      soil_moisture,
+      temperature: toNumber(temperature),
+      humidity: toNumber(humidity, 0, 100),
+      soil_moisture: toNumber(soil_moisture, 0, 100),
       weather_condition,
-      water_level
+      water_level: toNumber(water_level)
     });
 
     res.status(201).json({

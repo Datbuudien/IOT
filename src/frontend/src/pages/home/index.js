@@ -66,12 +66,36 @@ const Home = () => {
 
   const handleTogglePump = async (device) => {
     try {
-      await deviceService.updateDevice(device._id, {
-        pumpStatus: !device.pumpStatus
-      });
-      loadData();
+      // Optimistic update: Cập nhật UI ngay lập tức trước khi gửi lệnh
+      const newRelay1Status = !device.relay1Status;
+      setDevices(prevDevices => 
+        prevDevices.map(d => 
+          d._id === device._id 
+            ? { ...d, relay1Status: newRelay1Status }
+            : d
+        )
+      );
+      
+      // Gửi lệnh MQTT để điều khiển bơm
+      // relay1Status: true = đang hoạt động (LOW), false = tắt (HIGH)
+      const action = device.relay1Status ? 'pump_off' : 'pump_on';
+      await deviceService.sendCommand(device._id, { action });
+      
+      // Đợi 2 giây để ESP32 kịp gửi heartbeat với trạng thái mới, rồi reload để sync
+      // UI đã được cập nhật ngay lập tức ở trên (optimistic update)
+      setTimeout(() => {
+        loadData();
+      }, 2000);
     } catch (error) {
       console.error('Lỗi khi thay đổi trạng thái bơm:', error);
+      // Rollback nếu có lỗi
+      setDevices(prevDevices => 
+        prevDevices.map(d => 
+          d._id === device._id 
+            ? { ...d, relay1Status: device.relay1Status }
+            : d
+        )
+      );
     }
   };
 
@@ -183,43 +207,24 @@ const Home = () => {
                         </span>
                       </div>
 
-                      {/* Weather Condition */}
-                      {data.weather_condition && (
+                      {/* Weather Condition from isRain */}
+                      {data.isRain !== undefined && (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-xl">
-                              {data.weather_condition === 'sunny' ? '☀️' : 
-                               data.weather_condition === 'cloudy' ? '☁️' :
-                               data.weather_condition === 'rainy' ? '🌧️' : '⛈️'}
+                              {data.isRain ? '🌧️' : '🌤️'}
                             </span>
                             <span className="text-sm text-gray-600">Thời tiết</span>
                           </div>
                           <span className="text-lg font-bold text-yellow-600 capitalize">
-                            {data.weather_condition === 'sunny' ? 'Nắng' : 
-                             data.weather_condition === 'cloudy' ? 'Nhiều mây' :
-                             data.weather_condition === 'rainy' ? 'Mưa' : 'Giông'}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Water Level */}
-                      {data.water_level !== undefined && (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <svg className="h-5 w-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                            </svg>
-                            <span className="text-sm text-gray-600">Mực nước</span>
-                          </div>
-                          <span className={`text-lg font-bold ${data.water_level < 30 ? 'text-red-600' : data.water_level < 50 ? 'text-orange-600' : 'text-cyan-600'}`}>
-                            {data.water_level}%
+                            {data.isRain ? 'Mưa' : 'Không mưa'}
                           </span>
                         </div>
                       )}
 
                       {/* Timestamp */}
                       <div className="pt-3 border-t text-xs text-gray-500">
-                        {new Date(data.timestamp).toLocaleString('vi-VN')}
+                        {new Date(data.timestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
                       </div>
                     </div>
                   </div>
@@ -237,27 +242,42 @@ const Home = () => {
                 Điều khiển thiết bị
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {devices.map((device) => (
-                  <div key={device._id} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">{device.deviceId}</p>
-                      <p className={`text-lg font-bold ${device.pumpStatus ? 'text-green-600' : 'text-gray-600'}`}>
-                        {device.pumpStatus ? 'Đang hoạt động' : 'Đã tắt'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">Chế độ: {device.mode}</p>
+                {devices.map((device) => {
+                  // Kiểm tra trạng thái online/offline dựa trên lastSeen
+                  // Nếu lastSeen < 1 phút trước thì online, ngược lại offline
+                  // Ưu tiên kiểm tra lastSeen thay vì device.status vì lastSeen được cập nhật từ heartbeat thực tế
+                  const isOnline = device.lastSeen 
+                    ? (new Date() - new Date(device.lastSeen)) < 1 * 60 * 1000 // 1 phút (vì heartbeat gửi mỗi 5 giây)
+                    : false;
+                  
+                  const status = isOnline ? 'online' : 'offline';
+                  
+                  return (
+                    <div key={device._id} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-sm font-medium text-gray-700">{device.deviceId}</p>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            status === 'online' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {status === 'online' ? '🟢 Online' : '⚫ Offline'}
+                          </span>
+                        </div>
+                        <p className={`text-lg font-bold ${device.relay1Status ? 'text-green-600' : 'text-gray-600'}`}>
+                          {device.relay1Status ? 'Đang hoạt động' : 'Đang tắt'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Chế độ: {device.mode}</p>
+                        {device.lastSeen && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Lần cuối: {new Date(device.lastSeen).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleTogglePump(device)}
-                      className={`px-6 py-3 rounded-lg font-medium transition duration-150 shadow-md ${
-                        device.pumpStatus
-                          ? 'bg-red-500 hover:bg-red-600 text-white'
-                          : 'bg-green-500 hover:bg-green-600 text-white'
-                      }`}
-                    >
-                      {device.pumpStatus ? 'Tắt' : 'Bật'}
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </>

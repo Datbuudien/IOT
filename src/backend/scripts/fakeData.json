@@ -1,0 +1,507 @@
+[
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 24.5,
+    "humidity": 72.3,
+    "soil_moisture": 52.1,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T13:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 24.2,
+    "humidity": 73.1,
+    "soil_moisture": 51.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T13:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 23.8,
+    "humidity": 74.2,
+    "soil_moisture": 51.5,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T14:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 23.5,
+    "humidity": 75.0,
+    "soil_moisture": 51.2,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T14:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 23.1,
+    "humidity": 75.8,
+    "soil_moisture": 50.9,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T15:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 22.8,
+    "humidity": 76.5,
+    "soil_moisture": 50.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T15:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 22.5,
+    "humidity": 77.2,
+    "soil_moisture": 50.3,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T16:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 22.2,
+    "humidity": 77.9,
+    "soil_moisture": 50.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T16:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 22.0,
+    "humidity": 78.5,
+    "soil_moisture": 49.7,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T17:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 21.8,
+    "humidity": 79.1,
+    "soil_moisture": 49.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T17:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 21.6,
+    "humidity": 79.7,
+    "soil_moisture": 49.1,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T18:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 21.4,
+    "humidity": 80.2,
+    "soil_moisture": 48.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T18:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 21.2,
+    "humidity": 80.7,
+    "soil_moisture": 48.5,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T19:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 21.0,
+    "humidity": 81.2,
+    "soil_moisture": 48.2,
+    "weather_condition": "rain",
+    "timestamp": { "$date": "2025-12-07T19:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 20.8,
+    "humidity": 81.7,
+    "soil_moisture": 47.9,
+    "weather_condition": "rain",
+    "timestamp": { "$date": "2025-12-07T20:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 20.6,
+    "humidity": 82.1,
+    "soil_moisture": 47.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T20:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 20.4,
+    "humidity": 82.5,
+    "soil_moisture": 47.3,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T21:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 20.2,
+    "humidity": 82.9,
+    "soil_moisture": 47.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T21:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 20.0,
+    "humidity": 83.2,
+    "soil_moisture": 46.7,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T22:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 19.8,
+    "humidity": 83.5,
+    "soil_moisture": 46.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T22:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 19.6,
+    "humidity": 83.8,
+    "soil_moisture": 46.1,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T23:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 19.4,
+    "humidity": 84.1,
+    "soil_moisture": 45.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-07T23:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 19.2,
+    "humidity": 84.3,
+    "soil_moisture": 45.5,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T00:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 19.0,
+    "humidity": 84.5,
+    "soil_moisture": 45.2,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T00:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 18.8,
+    "humidity": 84.7,
+    "soil_moisture": 44.9,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T01:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 18.6,
+    "humidity": 84.9,
+    "soil_moisture": 44.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T01:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 18.4,
+    "humidity": 85.1,
+    "soil_moisture": 44.3,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T02:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 18.2,
+    "humidity": 85.2,
+    "soil_moisture": 44.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T02:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 18.0,
+    "humidity": 85.3,
+    "soil_moisture": 43.7,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T03:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 17.8,
+    "humidity": 85.4,
+    "soil_moisture": 43.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T03:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 17.6,
+    "humidity": 85.5,
+    "soil_moisture": 43.1,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T04:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 17.4,
+    "humidity": 85.6,
+    "soil_moisture": 42.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T04:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 17.2,
+    "humidity": 85.7,
+    "soil_moisture": 42.5,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T05:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 17.0,
+    "humidity": 85.8,
+    "soil_moisture": 42.2,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T05:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 18.5,
+    "humidity": 82.0,
+    "soil_moisture": 43.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T06:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 20.0,
+    "humidity": 78.0,
+    "soil_moisture": 43.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T06:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 21.5,
+    "humidity": 74.0,
+    "soil_moisture": 44.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T07:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 23.0,
+    "humidity": 70.0,
+    "soil_moisture": 45.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T07:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 24.5,
+    "humidity": 66.0,
+    "soil_moisture": 46.2,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T08:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 26.0,
+    "humidity": 62.0,
+    "soil_moisture": 47.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T08:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 27.5,
+    "humidity": 58.0,
+    "soil_moisture": 47.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T09:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 29.0,
+    "humidity": 54.0,
+    "soil_moisture": 48.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T09:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 30.5,
+    "humidity": 50.0,
+    "soil_moisture": 49.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T10:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 32.0,
+    "humidity": 48.0,
+    "soil_moisture": 50.2,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T10:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 33.2,
+    "humidity": 46.0,
+    "soil_moisture": 51.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T11:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 33.5,
+    "humidity": 45.0,
+    "soil_moisture": 51.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T11:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 33.8,
+    "humidity": 44.0,
+    "soil_moisture": 52.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T12:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 33.5,
+    "humidity": 45.0,
+    "soil_moisture": 53.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T12:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 33.0,
+    "humidity": 46.0,
+    "soil_moisture": 54.2,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T13:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 32.5,
+    "humidity": 48.0,
+    "soil_moisture": 55.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T13:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 32.0,
+    "humidity": 50.0,
+    "soil_moisture": 55.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T14:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 31.5,
+    "humidity": 52.0,
+    "soil_moisture": 56.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T14:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 31.0,
+    "humidity": 54.0,
+    "soil_moisture": 57.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T15:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 30.5,
+    "humidity": 56.0,
+    "soil_moisture": 58.2,
+    "weather_condition": "rain",
+    "timestamp": { "$date": "2025-12-08T15:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 30.0,
+    "humidity": 58.0,
+    "soil_moisture": 59.0,
+    "weather_condition": "rain",
+    "timestamp": { "$date": "2025-12-08T16:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 29.5,
+    "humidity": 60.0,
+    "soil_moisture": 59.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T16:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 29.0,
+    "humidity": 62.0,
+    "soil_moisture": 60.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T17:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 28.5,
+    "humidity": 64.0,
+    "soil_moisture": 61.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T17:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 28.0,
+    "humidity": 66.0,
+    "soil_moisture": 62.2,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T18:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 27.5,
+    "humidity": 68.0,
+    "soil_moisture": 63.0,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T18:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 27.0,
+    "humidity": 70.0,
+    "soil_moisture": 63.8,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T19:00:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 26.5,
+    "humidity": 72.0,
+    "soil_moisture": 64.6,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T19:30:00.000Z" }
+  },
+  {
+    "deviceId": { "$oid": "693570483752a8772809d180" },
+    "temperature": 26.0,
+    "humidity": 74.0,
+    "soil_moisture": 65.4,
+    "weather_condition": "clear",
+    "timestamp": { "$date": "2025-12-08T20:00:00.000Z" }
+  }
+]
+

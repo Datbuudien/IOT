@@ -11,6 +11,7 @@ class SchedulerService {
   constructor() {
     this.runningJobs = new Map(); // Map<scheduleId, cronJob>
     this.activeSchedules = new Map(); // Map<scheduleId, timeoutId> cho việc tắt máy bơm
+    this.scheduleEndTimes = new Map(); // Map<scheduleId, endTime> để lưu thời gian kết thúc
   }
 
   /**
@@ -19,12 +20,33 @@ class SchedulerService {
   async start() {
     console.log('🕐 Starting Scheduler Service...');
     
-    // Chạy check mỗi phút
+    // Chạy check lịch tưới mỗi phút
     cron.schedule('* * * * *', async () => {
       await this.checkAndExecuteSchedules();
     });
 
+    // Chạy check device offline mỗi 30 giây (kiểm tra devices không nhận heartbeat trong 1 phút)
+    cron.schedule('*/30 * * * * *', async () => {
+      await this.checkOfflineDevices();
+    });
+
+    // Chạy check và tắt bơm khi hết thời lượng mỗi phút
+    cron.schedule('* * * * *', async () => {
+      await this.checkAndTurnOffPumps();
+    });
+
     console.log('✅ Scheduler Service started');
+  }
+
+  /**
+   * Kiểm tra và đánh dấu devices offline nếu không nhận heartbeat
+   */
+  async checkOfflineDevices() {
+    try {
+      await Device.markOfflineDevices(1); // 1 phút timeout
+    } catch (error) {
+      console.error('❌ Lỗi kiểm tra devices offline:', error);
+    }
   }
 
   /**
@@ -88,10 +110,20 @@ class SchedulerService {
         return;
       }
 
-      // Bật máy bơm
-      const turned = await Device.updatePumpStatus(schedule.deviceId.toString(), true);
+      // Kiểm tra device có đang ở chế độ schedule không
+      if (device.mode !== 'schedule') {
+        console.log(`⚠️  Device ${device.deviceId} không ở chế độ schedule (mode: ${device.mode}), bỏ qua lịch`);
+        return;
+      }
+
+      // Gửi lệnh MQTT để bật máy bơm
+      const mqttService = require('./mqttService');
+      mqttService.sendCommand(device.deviceId, { action: 'pump_on', timestamp: new Date() });
+      
+      // Cập nhật trạng thái trong database
+      const turned = await Device.updatePumpStatus(schedule.deviceId.toString(), schedule.userId, true);
       if (!turned) {
-        console.error(`❌ Không thể bật máy bơm cho device ${device.name}`);
+        console.error(`❌ Không thể bật máy bơm cho device ${device.deviceId}`);
         await Schedule.logExecution(
           schedule._id,
           schedule.userId,
@@ -102,16 +134,21 @@ class SchedulerService {
         return;
       }
 
-      console.log(`✅ Đã bật máy bơm ${device.name} - Thời lượng: ${schedule.duration} phút`);
+      console.log(`✅ Đã bật máy bơm ${device.deviceId} - Thời lượng: ${schedule.duration} phút`);
 
-      // Tắt máy bơm sau duration phút
+      // Tính thời gian kết thúc (bắt đầu + duration phút)
+      const startTime = new Date();
+      const endTime = new Date(startTime.getTime() + (schedule.duration * 60 * 1000));
+      
+      // Lưu thời gian kết thúc để cron job có thể kiểm tra
+      this.scheduleEndTimes.set(schedule._id.toString(), endTime);
+
+      // Tắt máy bơm sau duration phút (backup với setTimeout)
       const timeoutId = setTimeout(async () => {
         try {
-          await Device.updatePumpStatus(schedule.deviceId.toString(), false);
-          console.log(`✅ Đã tắt máy bơm ${device.name} sau ${schedule.duration} phút`);
-          this.activeSchedules.delete(schedule._id.toString());
+          await this.turnOffPumpForSchedule(schedule, device);
         } catch (error) {
-          console.error(`❌ Lỗi tắt máy bơm ${device.name}:`, error);
+          console.error(`❌ Lỗi tắt máy bơm ${device.deviceId}:`, error);
         }
       }, schedule.duration * 60 * 1000);
 
@@ -194,6 +231,76 @@ class SchedulerService {
       console.log(`🛑 Đã hủy lịch: ${scheduleId}`);
     }
     this.activeSchedules.clear();
+    this.scheduleEndTimes.clear();
+  }
+
+  /**
+   * Kiểm tra và tắt bơm khi hết thời lượng
+   * Chạy mỗi phút để đảm bảo tắt đúng giờ
+   */
+  async checkAndTurnOffPumps() {
+    try {
+      const now = new Date();
+      
+      // Kiểm tra tất cả lịch đang chạy
+      for (const [scheduleId, endTime] of this.scheduleEndTimes) {
+        // Nếu đã đến hoặc qua thời gian kết thúc
+        if (now >= endTime) {
+          try {
+            // Lấy thông tin schedule
+            const schedule = await Schedule.findById(scheduleId);
+            if (!schedule) {
+              // Schedule không tồn tại, xóa khỏi map
+              this.scheduleEndTimes.delete(scheduleId);
+              this.activeSchedules.delete(scheduleId);
+              continue;
+            }
+
+            // Lấy thông tin device
+            const device = await Device.findById(schedule.deviceId.toString(), schedule.userId);
+            if (!device) {
+              this.scheduleEndTimes.delete(scheduleId);
+              this.activeSchedules.delete(scheduleId);
+              continue;
+            }
+
+            // Kiểm tra device có đang ở chế độ schedule không
+            if (device.mode !== 'schedule') {
+              // Device không còn ở chế độ schedule, xóa khỏi map
+              this.scheduleEndTimes.delete(scheduleId);
+              this.activeSchedules.delete(scheduleId);
+              continue;
+            }
+
+            // Tắt máy bơm
+            await this.turnOffPumpForSchedule(schedule, device);
+            
+          } catch (error) {
+            console.error(`❌ Lỗi kiểm tra và tắt bơm cho schedule ${scheduleId}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Lỗi kiểm tra và tắt bơm:', error);
+    }
+  }
+
+  /**
+   * Tắt máy bơm cho một schedule cụ thể
+   */
+  async turnOffPumpForSchedule(schedule, device) {
+    const mqttService = require('./mqttService');
+    
+    // Gửi lệnh MQTT để tắt máy bơm
+    mqttService.sendCommand(device.deviceId, { action: 'pump_off', timestamp: new Date() });
+    
+    // Cập nhật trạng thái trong database
+    await Device.updateRelay1Status(schedule.deviceId.toString(), schedule.userId, false);
+    console.log(`✅ Đã tắt máy bơm ${device.deviceId} sau ${schedule.duration} phút (lịch: ${schedule.name})`);
+    
+    // Xóa khỏi map
+    this.activeSchedules.delete(schedule._id.toString());
+    this.scheduleEndTimes.delete(schedule._id.toString());
   }
 }
 

@@ -21,6 +21,11 @@ const startServer = async () => {
     const schedulerService = require('./services/schedulerService');
     await schedulerService.start();
     
+    // Khởi động MQTT Service
+    const mqttService = require('./services/mqttService');
+    mqttService.connect();
+    console.log('✅ MQTT service started');
+    
     // Khởi động Express server
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
@@ -30,6 +35,9 @@ const startServer = async () => {
     // Graceful Shutdown
     const gracefulShutdown = async () => {
       console.log('\n⚠️  Shutting down gracefully...');
+      
+      // Disconnect MQTT
+      mqttService.disconnect();
       
       server.close(() => {
         console.log('✅ HTTP server closed');
