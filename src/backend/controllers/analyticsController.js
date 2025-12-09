@@ -1,4 +1,5 @@
 const { getDB } = require('../config/database');
+const SensorData = require('../models/SensorData');
 const { ObjectId } = require('mongodb');
 
 const getUserDevices = async (devicesCollection, userId) => {
@@ -117,7 +118,7 @@ const getSensorHistory = async (req, res) => {
 // Lấy thống kê tổng quan
 const getStatistics = async (req, res) => {
   try {
-    const { deviceId, startDate, endDate } = req.query;
+    const { deviceId, startDate, endDate, timeRange } = req.query;
     const db = getDB();
     const sensorDataCollection = db.collection('sensordata');
     const devicesCollection = db.collection('devices');
@@ -136,11 +137,43 @@ const getStatistics = async (req, res) => {
 
     const query = { ...deviceQuery.query };
 
+    // Cleanup data older than 30 days
+    try {
+      await SensorData.deleteOlderThan(30);
+    } catch (cleanupErr) {
+      console.warn('⚠️  Cleanup old sensor data failed:', cleanupErr);
+    }
+
+    // Build time filter (inclusive upper bound = now)
+    // Tính toán theo UTC để tương thích với cả dữ liệu cũ và mới
+    // Khi hiển thị sẽ convert sang GMT+7
+    const now = new Date(); // UTC hiện tại
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
       if (endDate) query.timestamp.$lte = new Date(endDate);
+      else query.timestamp.$lte = now;
+    } else if (timeRange) {
+      // Tính toán theo UTC (không có offset)
+      let tsFilter = new Date(now);
+      
+      if (timeRange === '12h') {
+        tsFilter = new Date(now.getTime() - (12 * 60 * 60 * 1000)); // Trừ 12 giờ
+      } else if (timeRange === '24h') {
+        tsFilter = new Date(now.getTime() - (24 * 60 * 60 * 1000)); // Trừ 24 giờ
+      } else if (timeRange === '7') {
+        tsFilter = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); // Trừ 7 ngày
+      } else if (timeRange === '30') {
+        tsFilter = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // Trừ 30 ngày
+      } else if (!Number.isNaN(Number(timeRange))) {
+        // fallback: if timeRange is a number => treat as days
+        tsFilter = new Date(now.getTime() - (Number(timeRange) * 24 * 60 * 60 * 1000));
+      }
+      query.timestamp = { $gte: tsFilter, $lte: now };
+      console.log(`📅 Time filter: ${tsFilter.toISOString()} to ${now.toISOString()}`);
     }
+    
+    console.log('🔍 Query:', JSON.stringify(query, null, 2));
 
     // Aggregate statistics
     const stats = await sensorDataCollection.aggregate([
@@ -183,6 +216,9 @@ const getStatistics = async (req, res) => {
       }
     });
 
+    // Đếm số lần mưa (weather_condition === 'rain')
+    const rainCount = weatherCounts['rain'] || 0;
+
     const result = {
       temperature: {
         avg: Math.round(stats[0].avgTemperature * 10) / 10,
@@ -205,6 +241,7 @@ const getStatistics = async (req, res) => {
         max: stats[0].maxWaterLevel
       },
       weatherConditions: weatherCounts,
+      rainCount: rainCount, // Số lần ghi nhận mưa (isRain = true)
       totalRecords: stats[0].totalRecords
     };
 
@@ -253,10 +290,13 @@ const getHourlyData = async (req, res) => {
 
     const query = { ...deviceQuery.query };
 
-    // Get data from last N hours
-    const hoursAgo = new Date();
-    hoursAgo.setHours(hoursAgo.getHours() - parseInt(hours));
-    query.timestamp = { $gte: hoursAgo };
+    // Get data from last N hours (with upper bound = now)
+    // Tính toán theo UTC để tương thích với cả dữ liệu cũ và mới
+    const now = new Date(); // UTC hiện tại
+    const hoursAgo = new Date(now.getTime() - (parseInt(hours) * 60 * 60 * 1000)); // Trừ N giờ
+    query.timestamp = { $gte: hoursAgo, $lte: now };
+    
+    console.log(`📊 Hourly data query: ${hoursAgo.toISOString()} to ${now.toISOString()}`);
 
     const data = await sensorDataCollection.aggregate([
       { $match: query },
@@ -279,15 +319,28 @@ const getHourlyData = async (req, res) => {
       { $sort: { timestamp: 1 } }
     ]).toArray();
 
-    const chartData = data.map(d => ({
-      time: `${d._id.day}/${d._id.month} ${d._id.hour}:00`,
-      temperature: Math.round(d.avgTemperature * 10) / 10,
-      humidity: Math.round(d.avgHumidity * 10) / 10,
-      soilMoisture: Math.round(d.avgSoilMoisture * 10) / 10,
-      waterLevel: Math.round(d.avgWaterLevel * 10) / 10,
-      count: d.count,
-      timestamp: d.timestamp
-    }));
+    console.log(`📈 Found ${data.length} hourly data points`);
+
+    const chartData = data.map(d => {
+      // Convert timestamp từ UTC sang GMT+7 để hiển thị đúng múi giờ Việt Nam
+      const timestamp = d.timestamp ? new Date(d.timestamp) : new Date();
+      
+      // Format time theo GMT+7 (cộng 7 giờ vào UTC)
+      const gmt7Time = new Date(timestamp.getTime() + (7 * 60 * 60 * 1000));
+      const day = String(gmt7Time.getUTCDate()).padStart(2, '0');
+      const month = String(gmt7Time.getUTCMonth() + 1).padStart(2, '0');
+      const hour = String(gmt7Time.getUTCHours()).padStart(2, '0');
+      
+      return {
+        time: `${day}/${month} ${hour}:00`,
+        temperature: Math.round((d.avgTemperature || 0) * 10) / 10,
+        humidity: Math.round((d.avgHumidity || 0) * 10) / 10,
+        soilMoisture: Math.round((d.avgSoilMoisture || 0) * 10) / 10,
+        waterLevel: Math.round((d.avgWaterLevel || 0) * 10) / 10,
+        count: d.count,
+        timestamp: d.timestamp
+      };
+    });
 
     res.json({
       success: true,
@@ -334,10 +387,13 @@ const getDailyData = async (req, res) => {
 
     const query = { ...deviceQuery.query };
 
-    // Get data from last N days
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - parseInt(days));
-    query.timestamp = { $gte: daysAgo };
+    // Get data from last N days (with upper bound = now)
+    // Tính toán theo UTC để tương thích với cả dữ liệu cũ và mới
+    const now = new Date(); // UTC hiện tại
+    const daysAgo = new Date(now.getTime() - (parseInt(days) * 24 * 60 * 60 * 1000)); // Trừ N ngày
+    query.timestamp = { $gte: daysAgo, $lte: now };
+    
+    console.log(`📊 Daily data query: ${daysAgo.toISOString()} to ${now.toISOString()}`);
 
     const data = await sensorDataCollection.aggregate([
       { $match: query },
@@ -361,17 +417,30 @@ const getDailyData = async (req, res) => {
       { $sort: { timestamp: 1 } }
     ]).toArray();
 
-    const chartData = data.map(d => ({
-      date: `${d._id.day}/${d._id.month}/${d._id.year}`,
-      temperature: Math.round(d.avgTemperature * 10) / 10,
-      humidity: Math.round(d.avgHumidity * 10) / 10,
-      soilMoisture: Math.round(d.avgSoilMoisture * 10) / 10,
-      waterLevel: Math.round(d.avgWaterLevel * 10) / 10,
-      minTemp: d.minTemperature,
-      maxTemp: d.maxTemperature,
-      count: d.count,
-      timestamp: d.timestamp
-    }));
+    console.log(`📈 Found ${data.length} daily data points`);
+
+    const chartData = data.map(d => {
+      // Convert timestamp từ UTC sang GMT+7 để hiển thị đúng múi giờ Việt Nam
+      const timestamp = d.timestamp ? new Date(d.timestamp) : new Date();
+      
+      // Format date theo GMT+7 (cộng 7 giờ vào UTC)
+      const gmt7Time = new Date(timestamp.getTime() + (7 * 60 * 60 * 1000));
+      const day = String(gmt7Time.getUTCDate()).padStart(2, '0');
+      const month = String(gmt7Time.getUTCMonth() + 1).padStart(2, '0');
+      const year = gmt7Time.getUTCFullYear();
+      
+      return {
+        date: `${day}/${month}/${year}`,
+        temperature: Math.round((d.avgTemperature || 0) * 10) / 10,
+        humidity: Math.round((d.avgHumidity || 0) * 10) / 10,
+        soilMoisture: Math.round((d.avgSoilMoisture || 0) * 10) / 10,
+        waterLevel: Math.round((d.avgWaterLevel || 0) * 10) / 10,
+        minTemp: d.minTemperature,
+        maxTemp: d.maxTemperature,
+        count: d.count,
+        timestamp: d.timestamp
+      };
+    });
 
     res.json({
       success: true,

@@ -60,8 +60,7 @@ const Devices = () => {
     setEditingDevice(device);
     setFormData({
       deviceId: device.deviceId,
-      pumpStatus: device.pumpStatus,
-      mode: device.mode
+      mode: device.mode // Chỉ lưu mode khi sửa, không lưu pumpStatus
     });
     setShowModal(true);
   };
@@ -77,8 +76,12 @@ const Devices = () => {
 
     try {
       if (editingDevice) {
-        // Update device
-        await deviceService.updateDevice(editingDevice._id, formData);
+        // Update device - chỉ cập nhật mode, không cập nhật pumpStatus từ form
+        const updateData = { mode: formData.mode };
+        await deviceService.updateDevice(editingDevice._id, updateData);
+        
+        // Gửi config qua MQTT để ESP32 biết chế độ mới
+        await deviceService.sendConfig(editingDevice._id, { mode: formData.mode });
       } else {
         // Add new device
         await deviceService.addDevice(formData);
@@ -92,12 +95,37 @@ const Devices = () => {
 
   const handleTogglePump = async (device) => {
     try {
-      await deviceService.updateDevice(device._id, {
-        pumpStatus: !device.pumpStatus
-      });
-      loadDevices();
+      // Optimistic update: Cập nhật UI ngay lập tức trước khi gửi lệnh
+      const newRelay1Status = !device.relay1Status;
+      setDevices(prevDevices => 
+        prevDevices.map(d => 
+          d._id === device._id 
+            ? { ...d, relay1Status: newRelay1Status }
+            : d
+        )
+      );
+      
+      // Gửi lệnh MQTT để điều khiển bơm
+      // relay1Status: true = đang hoạt động (LOW), false = tắt (HIGH)
+      const action = device.relay1Status ? 'pump_off' : 'pump_on';
+      await deviceService.sendCommand(device._id, { action });
+      
+      // Đợi 2 giây để ESP32 kịp gửi heartbeat với trạng thái mới, rồi reload để sync
+      // UI đã được cập nhật ngay lập tức ở trên (optimistic update)
+      setTimeout(() => {
+        loadDevices();
+      }, 2000);
     } catch (error) {
+      console.error('Lỗi khi thay đổi trạng thái bơm:', error);
       setError('Không thể thay đổi trạng thái bơm');
+      // Rollback nếu có lỗi
+      setDevices(prevDevices => 
+        prevDevices.map(d => 
+          d._id === device._id 
+            ? { ...d, relay1Status: device.relay1Status }
+            : d
+        )
+      );
     }
   };
 
@@ -126,21 +154,21 @@ const Devices = () => {
     const modeConfig = {
       auto: { label: 'Tự động', color: 'text-blue-600' },
       manual: { label: 'Thủ công', color: 'text-gray-600' },
-      schedule: { label: 'Lịch trình', color: 'text-purple-600' },
-      off: { label: 'Tắt', color: 'text-red-600' }
+      schedule: { label: 'Lịch trình', color: 'text-purple-600' }
     };
     return modeConfig[mode] || modeConfig.manual;
   };
 
-  const getPumpStatusBadge = (pumpStatus) => {
-    return pumpStatus ? (
+  const getPumpStatusBadge = (relay1Status) => {
+    // relay1Status: true = đang hoạt động (LOW), false = tắt (HIGH)
+    return relay1Status ? (
       <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1">
         <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
         Đang hoạt động
       </span>
     ) : (
       <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-        Tắt
+        Đang tắt
       </span>
     );
   };
@@ -207,52 +235,83 @@ const Devices = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {devices.map((device) => (
-              <div key={device._id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition duration-150 p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-lg ${
-                    device.pumpStatus ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {getDeviceIcon(device.pumpStatus)}
+            {devices.map((device) => {
+              // Kiểm tra trạng thái online/offline dựa trên lastSeen
+              // Nếu lastSeen < 1 phút trước thì online, ngược lại offline
+              // Ưu tiên kiểm tra lastSeen thay vì device.status vì lastSeen được cập nhật từ heartbeat thực tế
+              const isOnline = device.lastSeen 
+                ? (new Date() - new Date(device.lastSeen)) < 1 * 60 * 1000 // 1 phút (vì heartbeat gửi mỗi 5 giây)
+                : false;
+              
+              const status = isOnline ? 'online' : 'offline';
+              const showPumpButton = device.mode === 'manual'; // Chỉ hiển thị nút khi mode = manual
+              
+              return (
+                <div key={device._id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition duration-150 p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-lg ${
+                      device.relay1Status ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {getDeviceIcon(device.relay1Status)}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        status === 'online' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {status === 'online' ? '🟢 Online' : '⚫ Offline'}
+                      </span>
+                      {getPumpStatusBadge(device.relay1Status)}
+                    </div>
                   </div>
-                  {getPumpStatusBadge(device.pumpStatus)}
-                </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {device.deviceId}
-                </h3>
-                <div className="space-y-2 mb-4">
-                  <p className={`text-sm font-medium ${getModeLabel(device.mode).color}`}>
-                    Chế độ: {getModeLabel(device.mode).label}
-                  </p>
-                </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {device.deviceId}
+                  </h3>
+                  <div className="space-y-2 mb-4">
+                    <p className={`text-sm font-medium ${getModeLabel(device.mode).color}`}>
+                      Chế độ: {getModeLabel(device.mode).label}
+                    </p>
+                    {device.lastSeen && (
+                      <p className="text-xs text-gray-400">
+                        Lần cuối: {new Date(device.lastSeen).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleTogglePump(device)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition duration-150 ${
-                      device.pumpStatus
-                        ? 'bg-red-50 hover:bg-red-100 text-red-600'
-                        : 'bg-green-50 hover:bg-green-100 text-green-600'
-                    }`}
-                  >
-                    {device.pumpStatus ? 'Tắt bơm' : 'Bật bơm'}
-                  </button>
-                  <button
-                    onClick={() => handleEditDevice(device)}
-                    className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium transition duration-150"
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => handleDeleteDevice(device._id)}
-                    className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-medium transition duration-150"
-                  >
-                    Xóa
-                  </button>
+                  <div className="flex gap-2">
+                    {showPumpButton && (
+                      <button
+                        onClick={() => handleTogglePump(device)}
+                        disabled={status === 'offline'}
+                        className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition duration-150 ${
+                          status === 'offline'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : device.relay1Status
+                            ? 'bg-red-50 hover:bg-red-100 text-red-600'
+                            : 'bg-green-50 hover:bg-green-100 text-green-600'
+                        }`}
+                      >
+                        {device.relay1Status ? 'Tắt bơm' : 'Bật bơm'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleEditDevice(device)}
+                      className={`${showPumpButton ? 'flex-1' : 'flex-1'} bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium transition duration-150`}
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDevice(device._id)}
+                      className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-medium transition duration-150"
+                    >
+                      Xóa
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -308,37 +367,17 @@ const Devices = () => {
                   <option value="manual">Thủ công</option>
                   <option value="auto">Tự động</option>
                   <option value="schedule">Lịch trình</option>
-                  <option value="off">Tắt</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Trạng thái bơm
-                </label>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="pumpStatus"
-                      checked={formData.pumpStatus === false}
-                      onChange={() => setFormData({ ...formData, pumpStatus: false })}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">Tắt</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="pumpStatus"
-                      checked={formData.pumpStatus === true}
-                      onChange={() => setFormData({ ...formData, pumpStatus: true })}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">Bật</span>
-                  </label>
+              {editingDevice && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Lưu ý:</strong> Khi chọn chế độ "Thủ công", bạn có thể bật/tắt bơm trực tiếp từ trang quản lý. 
+                    Chế độ "Tự động" và "Lịch trình" sẽ tự động điều khiển bơm theo logic đã cài đặt.
+                  </p>
                 </div>
-              </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button

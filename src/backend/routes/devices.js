@@ -22,4 +22,10 @@ router.put('/:id', deviceController.updateDevice);
 // DELETE /api/devices/:id - Xóa device
 router.delete('/:id', deviceController.deleteDevice);
 
+// POST /api/devices/:id/command - Gửi lệnh điều khiển qua MQTT
+router.post('/:id/command', deviceController.sendCommand);
+
+// POST /api/devices/:id/config - Gửi cấu hình qua MQTT
+router.post('/:id/config', deviceController.sendConfig);
+
 module.exports = router;

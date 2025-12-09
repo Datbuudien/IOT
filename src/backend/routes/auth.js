@@ -136,6 +136,7 @@ router.post('/login', async (req, res) => {
         userId: user._id,
         email: user.email,
         name: user.name,
+        role: user.role || 'user', // Thêm role vào response
         token
       }
     });

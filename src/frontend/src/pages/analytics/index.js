@@ -12,6 +12,7 @@ const Analytics = () => {
   const [selectedDevice, setSelectedDevice] = useState('');
   const [timeRange, setTimeRange] = useState('24h');
   const [loading, setLoading] = useState(true);
+  const [deviceError, setDeviceError] = useState('');
   
   // Data states
   const [statistics, setStatistics] = useState(null);
@@ -30,13 +31,21 @@ const Analytics = () => {
 
   const fetchDevices = async () => {
     try {
+      setDeviceError('');
       const response = await deviceService.getAll();
       if (response.success && response.data.length > 0) {
         setDevices(response.data);
         setSelectedDevice(response.data[0]._id);
+      } else {
+        setDevices([]);
+        setSelectedDevice('');
+        setDeviceError('Chưa có thiết bị nào được gán cho tài khoản của bạn');
       }
     } catch (error) {
       console.error('Lỗi tải devices:', error);
+      setDeviceError(error.message || 'Không thể tải danh sách thiết bị');
+      setDevices([]);
+      setSelectedDevice('');
     }
   };
 
@@ -51,6 +60,7 @@ const Analytics = () => {
 
       setLoading(true);
       const params = selectedDevice ? { deviceId: selectedDevice } : {};
+      params.timeRange = timeRange; // gửi timeRange để backend lọc thống kê cùng mốc thời gian
 
       console.log('📊 Fetching analytics data with params:', params);
 
@@ -86,8 +96,7 @@ const Analytics = () => {
   const COLORS = {
     temperature: '#ef4444',
     humidity: '#3b82f6',
-    soilMoisture: '#10b981',
-    waterLevel: '#8b5cf6'
+  soilMoisture: '#10b981'
   };
 
   const StatCard = ({ title, value, unit, icon, color }) => (
@@ -131,18 +140,24 @@ const Analytics = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Thiết bị
               </label>
-              <select
-                value={selectedDevice}
-                onChange={(e) => setSelectedDevice(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Tất cả thiết bị</option>
-                {devices.map(device => (
-                  <option key={device._id} value={device._id}>
-                    {device.name}
-                  </option>
-                ))}
-              </select>
+              {devices.length === 0 ? (
+                <div className="px-4 py-3 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 bg-gray-50">
+                  {deviceError || 'Chưa có thiết bị. Hãy thêm thiết bị để xem dữ liệu.'}
+                </div>
+              ) : (
+                <select
+                  value={selectedDevice}
+                  onChange={(e) => setSelectedDevice(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Tất cả thiết bị</option>
+                  {devices.map(device => (
+                    <option key={device._id} value={device._id}>
+                      {device.deviceId || device.name || 'Thiết bị'} ({device._id})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -209,13 +224,6 @@ const Analytics = () => {
                 unit="%"
                 icon="🌱"
                 color="text-green-500"
-              />
-              <StatCard
-                title="Mực nước TB"
-                value={statistics.waterLevel?.avg || 0}
-                unit="%"
-                icon="💦"
-                color="text-purple-500"
               />
             </div>
 
@@ -286,45 +294,42 @@ const Analytics = () => {
                   </div>
                 </div>
 
-                {/* Water Level */}
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
-                    <span className="text-2xl mr-2">💦</span> Mực nước
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Trung bình:</span>
-                      <span className="font-bold text-purple-500">{statistics.waterLevel?.avg || 0}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Thấp nhất:</span>
-                      <span className="font-medium">{statistics.waterLevel?.min || 0}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Cao nhất:</span>
-                      <span className="font-medium">{statistics.waterLevel?.max || 0}%</span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              {/* Weather Conditions */}
-              {statistics.weatherConditions && Object.keys(statistics.weatherConditions).length > 0 && (
-                <div className="mt-6 border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">☀️ Tình trạng thời tiết</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {Object.entries(statistics.weatherConditions).map(([weather, count]) => (
-                      <div key={weather} className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="text-2xl mb-1">
-                          {weather === 'sunny' ? '☀️' : weather === 'rainy' ? '🌧️' : weather === 'cloudy' ? '☁️' : '⛈️'}
+              {/* Weather (isRain) */}
+              <div className="mt-6 border rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                  <span className="text-2xl mr-2">🌦️</span> Tình trạng mưa (dựa trên isRain)
+                </h3>
+                {(() => {
+                  const rainCount = statistics?.rainCount || 0;
+                  const total = statistics?.totalRecords || 0;
+                  const rainPercent = total > 0 ? Math.round((rainCount / total) * 100) : 0;
+                  const noRainCount = total - rainCount;
+                  const noRainPercent = total > 0 ? Math.round((noRainCount / total) * 100) : 0;
+                  
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                        <span className="text-3xl">🌧️</span>
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-600">Có mưa</div>
+                          <div className="text-xl font-bold text-blue-600">{rainCount} lần</div>
+                          <div className="text-xs text-gray-500">{rainPercent}%</div>
                         </div>
-                        <div className="text-sm text-gray-600 capitalize">{weather}</div>
-                        <div className="text-lg font-bold text-gray-800">{count}</div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
+                        <span className="text-3xl">🌤️</span>
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-600">Không mưa</div>
+                          <div className="text-xl font-bold text-yellow-600">{noRainCount} lần</div>
+                          <div className="text-xs text-gray-500">{noRainPercent}%</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
               <div className="mt-4 text-center text-sm text-gray-500">
                 Tổng số bản ghi: {statistics.totalRecords || 0}
@@ -358,51 +363,31 @@ const Analytics = () => {
               </ResponsiveContainer>
             </div>
 
-            {/* Multi-line Chart */}
+            {/* Humidity Chart */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">📈 Biểu đồ Tổng hợp</h2>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={chartData}>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">💧 Biểu đồ Độ ẩm không khí</h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey={timeRange === '24h' || timeRange === '12h' ? 'time' : 'date'} />
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="temperature" 
-                    stroke={COLORS.temperature} 
-                    name="Nhiệt độ (°C)"
-                    strokeWidth={2}
-                  />
-                  <Line 
+                  <Area 
                     type="monotone" 
                     dataKey="humidity" 
                     stroke={COLORS.humidity} 
-                    name="Độ ẩm (%)"
-                    strokeWidth={2}
+                    fill={COLORS.humidity}
+                    fillOpacity={0.6}
+                    name="Độ ẩm không khí (%)"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="soilMoisture" 
-                    stroke={COLORS.soilMoisture} 
-                    name="Độ ẩm đất (%)"
-                    strokeWidth={2}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="waterLevel" 
-                    stroke={COLORS.waterLevel} 
-                    name="Mực nước (%)"
-                    strokeWidth={2}
-                  />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
 
             {/* Bar Chart */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">📊 Biểu đồ Cột</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4"> Biểu đồ độ ẩm đất</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -411,7 +396,6 @@ const Analytics = () => {
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="soilMoisture" fill={COLORS.soilMoisture} name="Độ ẩm đất (%)" />
-                  <Bar dataKey="waterLevel" fill={COLORS.waterLevel} name="Mực nước (%)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -15,30 +15,38 @@ const startServer = async () => {
   try {
     // Kết nối MongoDB
     await connectDB();
-    console.log('✅ Database connected successfully');
+    console.log('Database connected successfully');
     
     // Khởi động Scheduler Service
     const schedulerService = require('./services/schedulerService');
     await schedulerService.start();
     
+    // Khởi động MQTT Service
+    const mqttService = require('./services/mqttService');
+    mqttService.connect();
+    console.log('MQTT service started');
+    
     // Khởi động Express server
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 
     // Graceful Shutdown
     const gracefulShutdown = async () => {
-      console.log('\n⚠️  Shutting down gracefully...');
+      console.log('\nShutting down gracefully...');
+      
+      // Disconnect MQTT
+      mqttService.disconnect();
       
       server.close(() => {
-        console.log('✅ HTTP server closed');
+        console.log('HTTP server closed');
         process.exit(0);
       });
 
       // Force close after 10s
       setTimeout(() => {
-        console.error('❌ Forcing shutdown');
+        console.error('Forcing shutdown');
         process.exit(1);
       }, 10000);
     };
@@ -48,20 +56,20 @@ const startServer = async () => {
     process.on('SIGINT', gracefulShutdown);
 
   } catch (error) {
-    console.error('❌ Server startup error:', error);
+    console.error('Server startup error:', error);
     process.exit(1);
   }
 };
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
   process.exit(1);
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (error) => {
-  console.error('❌ Unhandled Rejection:', error);
+  console.error('Unhandled Rejection:', error);
   process.exit(1);
 });
 
