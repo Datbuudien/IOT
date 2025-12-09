@@ -24,9 +24,21 @@ router.get('/', (req, res) => {
 });
 
 router.get('/health', (req, res) => {
-  res.json({ 
+  res.status(200).json({ 
     status: 'healthy',
     database: 'connected',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check cho Render
+router.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    service: 'iot-backend',
+    database: 'connected',
+    uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
 });
