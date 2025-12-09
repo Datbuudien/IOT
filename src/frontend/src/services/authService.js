@@ -17,6 +17,7 @@ const authService = {
           userId: response.data.data.userId,
           email: response.data.data.email,
           name: response.data.data.name,
+          role: response.data.data.role || 'user',
         }));
       }
       
@@ -41,6 +42,7 @@ const authService = {
           userId: response.data.data.userId,
           email: response.data.data.email,
           name: response.data.data.name,
+          role: response.data.data.role || 'user',
         }));
       }
       

@@ -60,6 +60,26 @@ const deviceService = {
       throw error.response?.data || { success: false, message: 'Không thể xóa device' };
     }
   },
+
+  // Gửi lệnh điều khiển qua MQTT
+  sendCommand: async (deviceId, command) => {
+    try {
+      const response = await apiClient.post(`/api/devices/${deviceId}/command`, command);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { success: false, message: 'Không thể gửi lệnh' };
+    }
+  },
+
+  // Gửi cấu hình qua MQTT
+  sendConfig: async (deviceId, config) => {
+    try {
+      const response = await apiClient.post(`/api/devices/${deviceId}/config`, config);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { success: false, message: 'Không thể gửi cấu hình' };
+    }
+  },
 };
 
 export default deviceService;

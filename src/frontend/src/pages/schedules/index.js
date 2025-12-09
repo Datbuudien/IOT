@@ -162,7 +162,9 @@ const Schedules = () => {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">{schedule.name}</h3>
-                  <p className="text-sm text-gray-500">{schedule.device?.name || 'N/A'}</p>
+                  <p className="text-sm text-gray-500">
+                    {devices.find(d => d._id === schedule.deviceId.toString())?.deviceId || 'N/A'}
+                  </p>
                 </div>
                 <button
                   onClick={() => handleToggleActive(schedule._id)}
@@ -198,7 +200,7 @@ const Schedules = () => {
               {schedule.nextRun && (
                 <div className="bg-blue-50 rounded p-2 mb-3">
                   <p className="text-xs text-blue-800">
-                    Lần chạy tiếp: {new Date(schedule.nextRun).toLocaleString('vi-VN')}
+                    Lần chạy tiếp: {new Date(schedule.nextRun).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
                   </p>
                 </div>
               )}
@@ -244,7 +246,7 @@ const Schedules = () => {
                     >
                       <option value="">-- Chọn thiết bị --</option>
                       {devices.map(device => (
-                        <option key={device._id} value={device._id}>{device.name}</option>
+                        <option key={device._id} value={device._id}>{device.deviceId || device.name || `Device ${device._id}`}</option>
                       ))}
                     </select>
                   </div>
