@@ -258,18 +258,10 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
   size_t written = 0;
   size_t totalSize = contentLength;
   
-  // Dùng heap thay vì stack để tránh stack overflow
-  // Buffer 4KB trên stack có thể gây crash!
-  uint8_t* buffer = (uint8_t*)malloc(4096);
-  if (!buffer) {
-    Serial.println("❌ Failed to allocate buffer! Out of memory.");
-    http.end();
-    return;
-  }
-  
+  uint8_t buffer[1024] = { 0 };
   unsigned long lastActivity = millis();
   unsigned long lastProgress = millis();
-  const unsigned long TIMEOUT_MS = 180000; // 3 phút timeout (tăng từ 1 phút) - cho file lớn
+  const unsigned long TIMEOUT_MS = 60000; // 1 phút timeout nếu không có data
   const unsigned long PROGRESS_INTERVAL = 5000; // Hiển thị progress mỗi 5 giây
   
   // Forward declaration
@@ -288,7 +280,6 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
       Serial.print("/");
       Serial.println(totalSize);
       Update.abort();
-      free(buffer); // Free buffer trước khi return
       http.end();
       return;
     }
@@ -297,7 +288,6 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("❌ WiFi disconnected during download!");
       Update.abort();
-      free(buffer); // Free buffer trước khi return
       http.end();
       return;
     }
@@ -308,7 +298,7 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
     if (available) {
       lastActivity = millis(); // Reset timeout
       
-      int c = stream->readBytes(buffer, ((available > 4096) ? 4096 : available));
+      int c = stream->readBytes(buffer, ((available > sizeof(buffer)) ? sizeof(buffer) : available));
       
       if (c > 0) {
         // Write to flash
@@ -319,7 +309,6 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
           Serial.print(", Written: ");
           Serial.println(writtenBytes);
           Update.abort();
-          free(buffer); // Free buffer trước khi return
           http.end();
           return;
         }
@@ -362,7 +351,6 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
     Serial.println(written);
     Serial.println("Possible reasons: Connection lost, server closed connection, or timeout");
     Update.abort();
-    free(buffer); // Free buffer trước khi return
     http.end();
     return;
   }
@@ -370,9 +358,6 @@ void performOTAUpdate(String firmwareUrl, int expectedSize, String version) {
   Serial.print("✅ Download complete! Total: ");
   Serial.print(written);
   Serial.println(" bytes");
-  
-  // Free buffer (nhớ free sau khi dùng!)
-  free(buffer);
   
   http.end();
   
